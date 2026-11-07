@@ -2213,6 +2213,8 @@ setting:
   enableDedicatedGPUOptimization: Assign Dedicated GPU
   enableDedicatedGPUOptimizationDescription: This option will assign dedicated GPU to Minecraft process.
   enableDiscord: Enable Discord Presence
+  useOfficialLauncher: Play through the official Minecraft Launcher
+  useOfficialLauncherDescription: Play opens the official Minecraft Launcher with this instance selected, then you press Play there. It signs you in with its own Microsoft account. Needs the classic launcher (not the Microsoft Store version); without it, Vardrynn starts the game itself. Third-party accounts always start directly.
   enableDiscordDescription: This will update Discord status to the launcher
   enterUrl: Enter URL
   exportSettings: Export Settings

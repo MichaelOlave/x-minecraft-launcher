@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as vue from 'vue'
 
 const h = vi.hoisted(() => ({
-  refreshUser: vi.fn(), launch: vi.fn(), kill: vi.fn(), getGameProcess: vi.fn(),
+  refreshUser: vi.fn(), launch: vi.fn(), official: vi.fn(), kill: vi.fn(), getGameProcess: vi.fn(),
   auth: vi.fn(), permission: vi.fn(), generate: vi.fn(),
 }))
 vi.mock('@/composables', () => ({ useService: (key: string) => ({
   user: { refreshUser: h.refreshUser },
-  launch: { launch: h.launch, kill: h.kill, on: vi.fn(), removeListener: vi.fn(), getGameProcess: h.getGameProcess, getGameProcesses: vi.fn().mockResolvedValue([]) },
+  launch: { launch: h.launch, launchOfficialLauncher: h.official, kill: h.kill, on: vi.fn(), removeListener: vi.fn(), getGameProcess: h.getGameProcess, getGameProcesses: vi.fn().mockResolvedValue([]) },
   bedrock: { launch: vi.fn() }, auth: { getOrInstallAuthlibInjector: h.auth },
 })[key] }))
 vi.mock('@xmcl/runtime-api', () => ({
@@ -25,9 +25,9 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 async function flush() { for (let i = 0; i < 30; i++) await Promise.resolve() }
-function setup(mods: any[] = []) {
-  return useInstanceLaunch(vue.ref({ path: '/isolated', runtime: {} }) as any, vue.ref('1'), vue.ref('1'), vue.ref({ path: 'java' }) as any,
-    vue.ref({ id: 'user' }) as any, {} as any, vue.ref(mods))
+function setup(mods: any[] = [], settings: any = {}, user: any = { id: 'user' }) {
+  return useInstanceLaunch(vue.ref({ path: '/isolated', name: 'Pack', icon: 'http://launcher/icon.png', runtime: {} }) as any, vue.ref('1'), vue.ref('1'), vue.ref({ path: 'java' }) as any,
+    vue.ref(user) as any, { state: vue.ref(settings) } as any, vue.ref(mods))
 }
 
 describe('real instance launch lifecycle', () => {
@@ -187,5 +187,47 @@ describe('real instance launch lifecycle', () => {
     expect(api.error.value).toBeUndefined()
     expect(api.launchingStatus.value).toBe('refreshing-user')
     refresh.resolve({ id: 'user' }); await second
+  })
+  describe('official launcher', () => {
+    it('hands the instance to the official launcher without starting the game', async () => {
+      h.official.mockResolvedValue({ launched: true, executable: '/launcher' })
+      const api = setup([], { useOfficialLauncher: true })
+      await expect(api.launch()).resolves.toEqual({ operationId: expect.any(String) })
+      expect(h.official).toHaveBeenCalledWith({ skipAssetsCheck: true }, { name: 'Pack', icon: 'http://launcher/icon.png' })
+      // Dry options: no authlib-injector download for a launch Vardrynn does not start.
+      expect(h.generate.mock.calls[0][3].dry).toBe(true)
+      expect(h.launch).not.toHaveBeenCalled()
+      expect(h.refreshUser).not.toHaveBeenCalled()
+      expect(api.launching.value).toBe(false)
+    })
+    it('starts the game directly when no classic launcher is installed', async () => {
+      h.official.mockResolvedValue({ launched: false, reason: 'notFound' })
+      const api = setup([], { useOfficialLauncher: true })
+      await expect(api.launch()).resolves.toMatchObject({ pid: 42 })
+      expect(h.official).toHaveBeenCalledTimes(1)
+      expect(h.launch).toHaveBeenCalledTimes(1)
+    })
+    it('starts the game directly when the setting is off', async () => {
+      const api = setup([], { useOfficialLauncher: false })
+      await expect(api.launch()).resolves.toMatchObject({ pid: 42 })
+      expect(h.official).not.toHaveBeenCalled()
+    })
+    it('keeps third-party accounts on the direct launch', async () => {
+      const api = setup([], { useOfficialLauncher: true }, { id: 'user', authority: 'https://littleskin.cn/api/yggdrasil' })
+      await expect(api.launch()).resolves.toMatchObject({ pid: 42 })
+      expect(h.official).not.toHaveBeenCalled()
+    })
+    it('never uses it for servers', async () => {
+      const api = setup([], { useOfficialLauncher: true })
+      await expect(api.launch('server')).resolves.toMatchObject({ pid: 42 })
+      expect(h.official).not.toHaveBeenCalled()
+    })
+    it('reports a failure to open the launcher', async () => {
+      h.official.mockRejectedValue(new Error('spawn failed'))
+      const api = setup([], { useOfficialLauncher: true })
+      await expect(api.launch()).rejects.toThrow('spawn failed')
+      expect(api.error.value).toBeInstanceOf(Error)
+      expect(h.launch).not.toHaveBeenCalled()
+    })
   })
 })

@@ -3,6 +3,9 @@
   <div class="flex flex-col gap-4">
     <!-- Quick Launch Settings Card -->
     <SettingCard :title="t('setting.quickLaunchSettings')" icon="flash_on">
+      <SettingItemCheckbox v-model="useOfficialLauncher" data-testid="use-official-launcher" :title="t('setting.useOfficialLauncher')"
+        :description="t('setting.useOfficialLauncherDescription')" />
+      <v-divider class="my-2" />
       <SettingItemCheckbox v-model="fastLaunch" :title="t('instanceSetting.fastLaunch')"
         :description="t('instanceSetting.fastLaunchHint')" />
       <v-divider class="my-2" />
@@ -169,7 +172,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useEventListener } from '@vueuse/core'
-import { useGlobalSettings } from '@/composables/setting'
+import { kSettingsState, useGlobalSettings } from '@/composables/setting'
 import { useResolutionPresets } from '@/composables/resolutionPresets'
 import { useMonitorItems } from '@/composables/monitor'
 import { kJavaContext } from '@/composables/java'
@@ -205,6 +208,13 @@ const {
   globalResolution,
   setGlobalSettings,
 } = useGlobalSettings()
+
+// Saved right away, like the other launcher-wide switches.
+const { state: settingsState } = injection(kSettingsState)
+const useOfficialLauncher = computed({
+  get: () => settingsState.value?.useOfficialLauncher ?? true,
+  set: v => settingsState.value?.useOfficialLauncherSet(v),
+})
 
 // Java preference selection
 const { all: javas, remove: removeJava } = injection(kJavaContext)

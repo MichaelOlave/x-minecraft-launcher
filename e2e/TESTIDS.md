@@ -6,7 +6,7 @@ This file is the contract between the launcher UI in `xmcl-keystone-ui/` and the
 
 If the anchor you need is not here, add a `data-testid="…"` attribute to the corresponding Vue component, then re-run `pnpm gen:testids`.
 
-**Total anchors:** 339 (in 333 Vue files)
+**Total anchors:** 340 (in 333 Vue files)
 
 | Test ID | Defined in |
 |---|---|
@@ -137,8 +137,8 @@ If the anchor you need is not here, add a `data-testid="…"` attribute to the c
 | `gamepad-hints-card` | [`xmcl-keystone-ui/src/views/AppGamepadQuickMenu.vue#L7`](../xmcl-keystone-ui/src/views/AppGamepadQuickMenu.vue#L7) |
 | `gamepad-key-guide` | [`xmcl-keystone-ui/src/views/AppGamepadQuickMenu.vue#L13`](../xmcl-keystone-ui/src/views/AppGamepadQuickMenu.vue#L13) |
 | `gamepad-toggle-card` | [`xmcl-keystone-ui/src/views/AppGamepadQuickMenu.vue#L37`](../xmcl-keystone-ui/src/views/AppGamepadQuickMenu.vue#L37) |
-| `global-fullscreen-switch` | [`xmcl-keystone-ui/src/views/SettingGlobal.vue#L157`](../xmcl-keystone-ui/src/views/SettingGlobal.vue#L157) |
-| `global-monitor-select` | [`xmcl-keystone-ui/src/views/SettingGlobal.vue#L160`](../xmcl-keystone-ui/src/views/SettingGlobal.vue#L160) |
+| `global-fullscreen-switch` | [`xmcl-keystone-ui/src/views/SettingGlobal.vue#L160`](../xmcl-keystone-ui/src/views/SettingGlobal.vue#L160) |
+| `global-monitor-select` | [`xmcl-keystone-ui/src/views/SettingGlobal.vue#L163`](../xmcl-keystone-ui/src/views/SettingGlobal.vue#L163) |
 | `home-bedrock` | [`xmcl-keystone-ui/src/views/HomeBedrock.vue#L3`](../xmcl-keystone-ui/src/views/HomeBedrock.vue#L3) |
 | `home-bedrock-install` | [`xmcl-keystone-ui/src/views/HomeBedrock.vue#L60`](../xmcl-keystone-ui/src/views/HomeBedrock.vue#L60) |
 | `home-bedrock-installed` | [`xmcl-keystone-ui/src/views/HomeBedrock.vue#L48`](../xmcl-keystone-ui/src/views/HomeBedrock.vue#L48) |
@@ -313,6 +313,7 @@ If the anchor you need is not here, add a `data-testid="…"` attribute to the c
 | `unresolved-files-install` | [`xmcl-keystone-ui/src/views/HomeUnresolvedFilesDialog.vue#L135`](../xmcl-keystone-ui/src/views/HomeUnresolvedFilesDialog.vue#L135) |
 | `unresolved-files-search` | [`xmcl-keystone-ui/src/views/HomeUnresolvedFilesDialog.vue#L113`](../xmcl-keystone-ui/src/views/HomeUnresolvedFilesDialog.vue#L113) |
 | `update-error` | [`xmcl-keystone-ui/src/views/SettingUpdateInfoDialog.vue#L39`](../xmcl-keystone-ui/src/views/SettingUpdateInfoDialog.vue#L39) |
+| `use-official-launcher` | [`xmcl-keystone-ui/src/views/SettingGlobal.vue#L6`](../xmcl-keystone-ui/src/views/SettingGlobal.vue#L6) |
 | `use-shared-servers-list` | [`xmcl-keystone-ui/src/views/BaseSettingServer.vue#L8`](../xmcl-keystone-ui/src/views/BaseSettingServer.vue#L8) |
 | `vardrynn-pack-changelog` | [`xmcl-keystone-ui/src/views/AppVardrynnPackPublishDialog.vue#L54`](../xmcl-keystone-ui/src/views/AppVardrynnPackPublishDialog.vue#L54) |
 | `vardrynn-pack-publish` | [`xmcl-keystone-ui/src/views/BaseSettingModpack.vue#L105`](../xmcl-keystone-ui/src/views/BaseSettingModpack.vue#L105) |
