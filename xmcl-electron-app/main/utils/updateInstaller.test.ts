@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { installInPlace, MAC_SWAP_SCRIPT, macAppBundle, type InstallerHost } from './updateInstaller'
+import { installInPlace, MAC_SWAP_SCRIPT, macAppBundle, windowsUninstaller, type InstallerHost } from './updateInstaller'
 
 let dir: string
 beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'vardrynn-install-')) })
@@ -14,7 +14,7 @@ function host(overrides: Partial<InstallerHost> = {}): InstallerHost {
   return {
     platform: 'darwin', packaged: true, execPath: '/Applications/Vardrynn.app/Contents/MacOS/Vardrynn', pid: 4242,
     logPath: join(dir, 'update.log'), spawn: vi.fn(() => ({ unref: vi.fn() })) as any,
-    writable: async () => true, executable: async () => true, ...overrides,
+    writable: async () => true, executable: async () => true, exists: async () => true, ...overrides,
   }
 }
 
@@ -66,11 +66,37 @@ describe('installInPlace', () => {
     await expect(installInPlace(host({ platform: 'linux', spawn: exiting(126) }), '/x/v.deb')).rejects.toThrow('not authorized')
     await expect(installInPlace(host({ platform: 'linux', spawn: exiting(1) }), '/x/v.deb')).rejects.toThrow('code 1')
     expect(await installInPlace(host({ platform: 'linux', executable: async () => false }), '/x/v.deb')).toBeUndefined()
-    expect(await installInPlace(host({ platform: 'win32' }), '/x/v.exe')).toBeUndefined()
   })
 })
 
 // Runs the real helper against dmgs made with hdiutil. `open` is stubbed so nothing launches.
+describe('Windows installs', () => {
+  const execPath = 'C:\\Users\\me\\AppData\\Local\\Programs\\Vardrynn\\vardrynn.exe'
+  const setup = 'C:\\Users\\me\\AppData\\Roaming\\Vardrynn\\updates\\1.2.0\\vardrynn-1.2.0-setup-x64.exe'
+
+  it('looks for the uninstaller next to the installed exe', () => {
+    expect(windowsUninstaller(execPath)).toBe('C:\\Users\\me\\AppData\\Local\\Programs\\Vardrynn\\Uninstall Vardrynn.exe')
+  })
+
+  it('runs the setup exe silently over an installed copy and asks to quit', async () => {
+    const exists = vi.fn(async () => true)
+    const h = host({ platform: 'win32', execPath, exists })
+    expect(await installInPlace(h, setup)).toBe('quit')
+    expect(exists).toHaveBeenCalledWith(windowsUninstaller(execPath))
+    const [cmd, args, opts] = (h.spawn as any).mock.calls[0]
+    expect(cmd).toBe(setup)
+    expect(args).toEqual(['--updated', '/S', '--force-run'])
+    expect(opts).toMatchObject({ detached: true, stdio: 'ignore' })
+  })
+
+  it('opens the installer instead for a portable copy or another file type', async () => {
+    const portable = host({ platform: 'win32', execPath, exists: async () => false })
+    expect(await installInPlace(portable, setup)).toBeUndefined()
+    expect(portable.spawn).not.toHaveBeenCalled()
+    expect(await installInPlace(host({ platform: 'win32', execPath }), 'C:\\x\\v.zip')).toBeUndefined()
+  })
+})
+
 describe.runIf(process.platform === 'darwin')('macOS swap helper', () => {
   async function app(root: string, id: string, marker: string) {
     const bundle = join(root, 'Vardrynn.app')

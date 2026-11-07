@@ -17,6 +17,7 @@ Updates come only from the Vardrynn service and are accepted only when an Ed2551
 
 - **macOS:** a detached `/bin/sh` helper waits for the launcher to exit, mounts the verified dmg read-only, refuses an `.app` whose `CFBundleIdentifier` differs from the running one, copies it beside the current bundle, then swaps the two. Any failure puts the old bundle back. Either way it reopens the launcher. Its output goes to `<appData>/vardrynn/update-install.log`. A translocated, read-only or non-bundle install falls back to opening the dmg.
 - **Linux:** `pkexec /usr/bin/dpkg -i <deb>` shows the system password prompt; on success the launcher relaunches into the new version. A dismissed prompt or a failed install leaves the old version running and reports the error. Without `pkexec`, or for a non-deb install, the package is opened instead.
+- **Windows:** the verified `vardrynn-<version>-setup-x64.exe` runs detached with `--updated /S --force-run` and the launcher quits. The NSIS installer waits for it to exit, installs silently into the existing folder (shortcuts and game data kept), then reopens the launcher. Only an installed copy (one with `Uninstall Vardrynn.exe` beside it) is updated this way; a portable zip copy opens the installer instead.
 - Staged packages that are not newer than the running version are deleted at the next update check.
 
 These releases use the `verified` update operation. `manual` keeps its existing meaning in the UI: the launcher cannot update itself and the user must redownload. Download and install failures are shown in the update dialog.
@@ -34,7 +35,7 @@ The `release` job in `.github/workflows/build.yml` signs and publishes:
 
 The job runs in the GitHub environment `release`, which requires the repository owner's approval before it starts. Its secrets are `VARDRYNN_RELEASE_SIGNING_KEY` and the publishing pairs `VARDRYNN_S3_{DEV,PROD}_{ACCESS_KEY_ID,SECRET_ACCESS_KEY}`. Repository variables: `VARDRYNN_RELEASE_PUBLIC_KEY`, `VARDRYNN_S3_ENDPOINT`, `VARDRYNN_S3_{DEV,PROD}_BUCKET`, `VARDRYNN_DEV_API_BASE_URL`, and optionally `VARDRYNN_RELEASE_NOTES_URL` (defaults to the commit page). Signing refuses a key that does not match the public key. The packages, `release.json` and `SHA256SUMS` are also kept as the `vardrynn-release` workflow artifact.
 
-`VARDRYNN_API_BASE_URL` is deliberately unset (see `VARDRYNN_SERVICE_API.md`), so production builds report updates as `not-configured` until it is set to `https://api.olaveapi.com`.
+Since 2026-11-06 the variable `VARDRYNN_API_BASE_URL` is `https://api.olaveapi.com` (see `VARDRYNN_SERVICE_API.md`), so CI production builds check the production service. A build made without it reports updates as `not-configured`.
 
 **Key custody.** The production key pair was generated on 2026-11-05 in one process: the private half went straight into the `release` environment secret and was never written to disk or shown, so it cannot be recovered. Public key: `0mTr54fkHvFea8E+o+KDBZanknCmyrvH8QTFov6LQwQ=`. If the secret is lost or exposed, generate a new pair, replace the secret and variable, and ship a build with the new key through a channel users already trust; builds holding only the old key cannot verify releases signed by the new one.
 
@@ -48,7 +49,7 @@ S3_ENDPOINT=https://s3.olaveapi.com S3_BUCKET=<bucket> AWS_ACCESS_KEY_ID=... AWS
   scripts/vardrynn-publish.sh <packages>
 ```
 
-Only `.dmg` (macOS) and `.deb` (Linux) are offered as updates. Windows is excluded until packages carry an Authenticode signature the OS will accept.
+Only `.dmg` (macOS), `.deb` (Linux) and `-setup-x64.exe` (Windows) are offered as updates. A Windows installer reaches the release only after the `Verify Windows signatures` CI step confirms a valid, timestamped Authenticode signature from `VARDRYNN_PUBLISHER_NAME`; otherwise CI drops it with a warning. Setup: `VARDRYNN_WINDOWS_SIGNING.md`.
 
 ## Serving a release
 
@@ -74,14 +75,17 @@ Any `<version>/release.json` can be restored the same way. On an individual Mac,
 
 Deleted workflows: `deploy-release.yml` (Azure AppInstaller, `xmcl-page`, `@xmcl/app-*` npm packages, Homebrew tap, Discord/KOOK), `core-release.yml` (npm publishing of `@xmcl/*`) and `core-github-pages.yml` (`xmcl-page`). In `build.yml`: the Voxelum release action, tag push to `voxelum/x-minecraft-launcher`, `xmcl-page` changelog push, DeepSeek release notes, Azure source-map upload, SignPath publisher and the `ci010` reviewer.
 
+## Released through CI
+
+The `release` job has published from CI since 2026-11-06: `chore(release)` commits shipped 1.0.0 (run 42299038395) and 1.1.0 (run 42325791069) to `vardrynn-releases-prod`, and manual `publish: dev` runs published 0.73.1 to `vardrynn-releases-dev`. On 2026-11-07, `api.olaveapi.com/v1/releases/latest` served 1.1.0 (published 02:03 UTC) with signed `darwin-arm64`, `darwin-x64`, `linux-arm64` and `linux-x64` packages. An update between two CI-built releases has not been tried on a real machine; the in-place updates below used hand-published dev builds.
+
 ## Not done
 
 These need something this repository cannot supply on its own:
 
-- **The CI job has not run.** This branch is not on GitHub yet (`origin/master` is still the upstream history), so the `release` job needs the work merged to `master`, then a `chore(release)` commit or a manual `publish: dev` run. Its publish script and every step it runs were exercised by hand (below).
-- **No production release is published.** It waits on the first CI run, and on `VARDRYNN_API_BASE_URL` being set; until then, production builds cannot check for updates.
-- **Code signing.** macOS builds are ad-hoc signed and not notarized, because there is no Apple Developer ID. They update in place (below), but a first install from a browser download meets Gatekeeper. Windows updates stay excluded until Authenticode signing exists.
-- **Windows and x64.** Only arm64 was exercised on macOS and Linux. Windows has no update path.
+- **Code signing.** macOS builds are ad-hoc signed and not notarized, because there is no Apple Developer ID. They update in place (below), but a first install from a browser download meets Gatekeeper. Windows builds are signed with Azure Artifact Signing once it is set up (`VARDRYNN_WINDOWS_SIGNING.md`).
+- **x64.** Only arm64 was exercised on macOS and Linux.
+- **Windows has not run.** The installer and signing were exercised only by a macOS cross-build (2026-11-06, unsigned) and unit tests. The Azure account is not set up yet, and no install, signed build or in-place update has run on Windows.
 - **Out of phase 5:** the user agent and support links (done in phase 9; the About page keeps upstream attribution and sponsor credit); `appinstaller-builder.ts`, `sign-release.yml`, `deploy-ui.yml`, the Windows `deskgap-app` steps and the disabled `build-arch` job (Windows signing and phase 9).
 
 ## Packaged upgrades on 2026-11-05

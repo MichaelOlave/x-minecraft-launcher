@@ -1,7 +1,8 @@
 import { spawn } from 'child_process'
 import { constants, openSync } from 'fs'
 import { access } from 'fs/promises'
-import { dirname, join } from 'path'
+import { dirname, join, win32 } from 'path'
+import { LAUNCHER_DISPLAY_NAME } from '@xmcl/runtime/constant'
 
 /**
  * What the updater should do after a package was installed in place: `quit` lets a helper
@@ -20,6 +21,7 @@ export interface InstallerHost {
   spawn: typeof spawn
   writable: (path: string) => Promise<boolean>
   executable: (path: string) => Promise<boolean>
+  exists: (path: string) => Promise<boolean>
 }
 
 /** The `.app` bundle that contains this executable, e.g. `/Applications/Vardrynn.app`. */
@@ -93,10 +95,31 @@ async function installDeb(host: InstallerHost, deb: string): Promise<InPlaceInst
   return 'relaunch'
 }
 
+/**
+ * The NSIS uninstaller sits beside the exe only in an installed copy. An unzipped portable
+ * copy has none, and running the installer would create a second install, so it is skipped.
+ */
+export function windowsUninstaller(execPath: string): string {
+  return win32.join(win32.dirname(execPath), `Uninstall ${LAUNCHER_DISPLAY_NAME}.exe`)
+}
+
+/**
+ * Runs the verified setup exe silently. `--updated` keeps shortcuts and user data and reuses the
+ * existing install folder; `--force-run` reopens the launcher afterwards. The installer waits
+ * for this process to exit before replacing files, so the launcher quits right after.
+ */
+async function installWindows(host: InstallerHost, exe: string): Promise<InPlaceInstall> {
+  if (!exe.toLowerCase().endsWith('.exe') || !(await host.exists(windowsUninstaller(host.execPath)))) return undefined
+  const child = host.spawn(exe, ['--updated', '/S', '--force-run'], { detached: true, stdio: 'ignore' })
+  child.unref()
+  return 'quit'
+}
+
 export async function installInPlace(host: InstallerHost, path: string): Promise<InPlaceInstall> {
   if (!host.packaged) return undefined
   if (host.platform === 'darwin') return installMac(host, path)
   if (host.platform === 'linux') return installDeb(host, path)
+  if (host.platform === 'win32') return installWindows(host, path)
   return undefined
 }
 
@@ -110,5 +133,6 @@ export function defaultInstallerHost(packaged: boolean, logDirectory: string): I
     spawn,
     writable: (path) => access(path, constants.W_OK).then(() => true, () => false),
     executable: (path) => access(path, constants.X_OK).then(() => true, () => false),
+    exists: (path) => access(path).then(() => true, () => false),
   }
 }

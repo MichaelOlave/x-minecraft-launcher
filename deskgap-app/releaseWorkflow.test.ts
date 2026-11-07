@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -102,13 +102,26 @@ describe('regular DeskGap Windows release workflow', () => {
     expect(publish.run).toContain('--draft=false')
   })
 
-  it('keeps the unsigned DeskGap EXE out of the signed release manifest and any publication', () => {
+  it.skipIf(process.platform === 'win32')('selects installers for the Linux release job without publishing the unsigned DeskGap preview', () => {
     const release = build.jobs.release.steps
     expect(release.some(step => step.uses?.includes('create-release') || step.uses?.includes('Voxelum'))).toBe(false)
     const manifest = release.find(step => step.name === 'Sign release manifest and checksums')!.run!
-    expect(manifest).toContain("-name 'vardrynn-*.dmg'")
-    expect(manifest).not.toContain('deskgap')
-    expect(manifest).not.toContain('.exe')
+    const fixture = mkdtempSync(join(tmpdir(), 'vardrynn-release-selection-'))
+    const installers = ['vardrynn-1.2.0-arm64.dmg', 'vardrynn-1.2.0-amd64.deb', 'vardrynn-1.2.0-setup-x64.exe']
+    const excluded = ['vardrynn-deskgap-1.2.0-win32-x64.exe', 'vardrynn-1.2.0-x64.exe', 'vardrynn-1.2.0-win32-x64.zip', 'vardrynn-1.2.0-setup-x64.exe.blockmap']
+    try {
+      mkdirSync(join(fixture, 'build', 'windows'), { recursive: true })
+      mkdirSync(join(fixture, 'release'))
+      for (const name of [...installers, ...excluded]) writeFileSync(join(fixture, 'build', 'windows', name), name)
+      const selection = manifest.split('\n').find(line => line.startsWith('find build '))!
+      expect(selection).toBeTruthy()
+      const result = spawnSync('/bin/sh', ['-ec', selection], { cwd: fixture, encoding: 'utf8' })
+      expect(result.status, result.stderr || String(result.error)).toBe(0)
+      expect(readdirSync(join(fixture, 'release')).sort()).toEqual(installers.sort())
+      for (const name of installers) expect(readFileSync(join(fixture, 'release', name), 'utf8')).toBe(name)
+    } finally {
+      rmSync(fixture, { recursive: true, force: true })
+    }
   })
 
   it.skipIf(process.platform !== 'win32').each([false, true])('can hash/upload/publish APPX with unsigned preview present: %s', (withPreview) => {

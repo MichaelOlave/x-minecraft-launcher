@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { config } from './electron-builder.config'
+import { config, windowsAzureSigning } from './electron-builder.config'
 
 describe('macOS packaging', () => {
   it('declares local network access for Vardrynn and its Minecraft subprocesses', () => {
@@ -43,5 +43,39 @@ describe('Linux system packaging', () => {
       .replaceAll('${executable}', config.linux.executableName)
     expect(profile).toContain('profile "vardrynn" "/opt/Vardrynn/vardrynn" flags=(unconfined)')
     expect(profile).toContain('userns,')
+  })
+})
+
+describe('Windows packaging', () => {
+  it('builds a per-user NSIS installer next to the zip', () => {
+    expect(config.win.target).toContainEqual({ target: 'nsis', arch: ['x64'] })
+    expect(config.nsis).toMatchObject({
+      artifactName: 'vardrynn-${version}-setup-${arch}.${ext}',
+      oneClick: false,
+      perMachine: false,
+      deleteAppDataOnUninstall: false,
+    })
+  })
+})
+
+describe('Windows signing', () => {
+  const env = {
+    VARDRYNN_AZURE_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net/',
+    VARDRYNN_AZURE_SIGNING_ACCOUNT: 'vardrynn',
+    VARDRYNN_AZURE_SIGNING_PROFILE: 'vardrynn-public',
+    VARDRYNN_PUBLISHER_NAME: 'Jane Doe',
+  }
+
+  it('uses Azure Artifact Signing when every setting is present', () => {
+    expect(windowsAzureSigning(env)).toEqual({
+      endpoint: 'https://eus.codesigning.azure.net/',
+      codeSigningAccountName: 'vardrynn',
+      certificateProfileName: 'vardrynn-public',
+      publisherName: 'Jane Doe',
+    })
+  })
+
+  it.each(Object.keys(env))('builds unsigned without %s', (name) => {
+    expect(windowsAzureSigning({ ...env, [name]: '' })).toBeUndefined()
   })
 })

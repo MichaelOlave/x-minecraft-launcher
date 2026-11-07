@@ -13,16 +13,19 @@ export interface PackageFile {
 
 /**
  * Packages that can be handed to the OS installer, named by electron-builder's
- * `vardrynn-${version}-${arch}.${ext}` (`amd64` for x64 debs). Archives are published for manual download but
- * never offered as an update. Windows is excluded until its packages carry an
- * Authenticode signature, because the OS would refuse to install them.
+ * `vardrynn-${version}-${arch}.${ext}` (`amd64` for x64 debs, `setup-x64.exe` for the Windows
+ * installer). Archives are published for manual download but never offered as an update.
+ * CI only lets a Windows installer reach this point once it carries a valid Authenticode signature.
  */
 export function classifyPackage(name: string, version: string) {
-  const match = new RegExp(`^vardrynn-${version.replace(/[.+]/g, '\\$&')}-(x64|amd64|arm64|ia32)\\.(dmg|deb)$`).exec(basename(name))
+  const v = version.replace(/[.+]/g, '\\$&')
+  const match = new RegExp(`^vardrynn-${v}-(?:(x64|amd64|arm64|ia32)\\.(dmg|deb)|setup-(x64)\\.(exe))$`).exec(basename(name))
   if (!match) return undefined
-  const platform = { dmg: 'darwin', deb: 'linux' }[match[2] as 'dmg' | 'deb']
+  const ext = (match[2] ?? match[4]) as 'dmg' | 'deb' | 'exe'
+  const platform = { dmg: 'darwin', deb: 'linux', exe: 'win32' }[ext]
+  const arch = match[1] ?? match[3]
   // electron-builder names x64 Debian packages with Debian's own `amd64`.
-  return { platform, arch: match[1] === 'amd64' ? 'x64' : match[1] }
+  return { platform, arch: arch === 'amd64' ? 'x64' : arch }
 }
 
 export function generateReleaseKeyPair() {
@@ -62,7 +65,7 @@ export function buildReleaseManifest(options: {
       signature: sign(null, signaturePayload(options.version, { ...target, sha256 }), key).toString('base64'),
     }]
   })
-  if (!assets.length) throw new Error(`No installable packages for ${options.version} (expected dmg or deb)`)
+  if (!assets.length) throw new Error(`No installable packages for ${options.version} (expected dmg, deb or setup exe)`)
   const seen = new Set<string>()
   for (const a of assets) {
     const id = `${a.platform}-${a.arch}`

@@ -76,13 +76,49 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
           NODE_OPTIONS: --max-old-space-size=32768
           NODE_ENV: production
-          # Installers (dmg, deb) are built for real releases and for dev test releases.
+          # Installers (dmg, deb, Windows setup exe) are built for real releases and for dev test releases.
           RELEASE: ${{ startsWith(github.event.head_commit.message, 'chore(release)') || inputs.publish == 'dev' }}
           # A dev test release must check the dev service, or it could never see its own update.
           VARDRYNN_API_BASE_URL: ${{ inputs.publish == 'dev' && vars.VARDRYNN_DEV_API_BASE_URL || vars.VARDRYNN_API_BASE_URL }}
           VARDRYNN_RELEASE_PUBLIC_KEY: ${{ vars.VARDRYNN_RELEASE_PUBLIC_KEY }}
           VARDRYNN_MICROSOFT_CLIENT_ID: ${{ vars.VARDRYNN_MICROSOFT_CLIENT_ID }}
           VARDRYNN_DISCORD_APP_ID: ${{ vars.VARDRYNN_DISCORD_APP_ID }}
+          # Azure Artifact Signing (VARDRYNN_WINDOWS_SIGNING.md). Windows builds are unsigned without all of them.
+          VARDRYNN_AZURE_SIGNING_ENDPOINT: ${{ vars.VARDRYNN_AZURE_SIGNING_ENDPOINT }}
+          VARDRYNN_AZURE_SIGNING_ACCOUNT: ${{ vars.VARDRYNN_AZURE_SIGNING_ACCOUNT }}
+          VARDRYNN_AZURE_SIGNING_PROFILE: ${{ vars.VARDRYNN_AZURE_SIGNING_PROFILE }}
+          VARDRYNN_PUBLISHER_NAME: ${{ vars.VARDRYNN_PUBLISHER_NAME }}
+          AZURE_TENANT_ID: ${{ runner.os == 'Windows' && secrets.AZURE_TENANT_ID || '' }}
+          AZURE_CLIENT_ID: ${{ runner.os == 'Windows' && secrets.AZURE_CLIENT_ID || '' }}
+          AZURE_CLIENT_SECRET: ${{ runner.os == 'Windows' && secrets.AZURE_CLIENT_SECRET || '' }}
+      - name: Verify Windows signatures
+        # A release may only carry a Windows installer whose files are Authenticode-signed by
+        # VARDRYNN_PUBLISHER_NAME. Without signing set up, the installer is left out of the release.
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        env:
+          PUBLISHER: ${{ vars.VARDRYNN_PUBLISHER_NAME }}
+          SIGNING: ${{ vars.VARDRYNN_AZURE_SIGNING_ENDPOINT != '' && vars.VARDRYNN_AZURE_SIGNING_ACCOUNT != '' && vars.VARDRYNN_AZURE_SIGNING_PROFILE != '' && vars.VARDRYNN_PUBLISHER_NAME != '' }}
+        run: |
+          $out = 'xmcl-electron-app/build/output'
+          $setup = @(Get-ChildItem $out -Filter 'vardrynn-*-setup-x64.exe')
+          if ($setup.Count -eq 0) { Write-Host 'No Windows installer in this build.'; exit 0 }
+          if ($env:SIGNING -ne 'true') {
+            Write-Host '::warning::Windows signing is not configured; the unsigned installer is left out of the release.'
+            Get-ChildItem $out -Filter 'vardrynn-*-setup-x64.exe*' | Remove-Item
+            exit 0
+          }
+          $files = @($setup.FullName, "$out/win-unpacked/vardrynn.exe") | Where-Object { Test-Path $_ }
+          if ($files.Count -lt 2) { throw 'The unpacked vardrynn.exe is missing' }
+          # The uninstaller is signed inside the installer; it is checked on a real install (VARDRYNN_WINDOWS_SIGNING.md).
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature -LiteralPath $file
+            $subject = $sig.SignerCertificate.Subject
+            Write-Host "$(Split-Path $file -Leaf): $($sig.Status) $subject"
+            if ($sig.Status -ne 'Valid') { throw "$file is not validly signed: $($sig.StatusMessage)" }
+            if ($subject -notmatch ('(^|, )CN="?' + [regex]::Escape($env:PUBLISHER) + '"?(,|$)')) { throw "$file is signed by $subject, not $env:PUBLISHER" }
+            if (!$sig.TimeStamperCertificate) { throw "$file has no timestamp, so it would stop verifying when the certificate expires" }
+          }
       - name: Resolve pinned DeskGap runtime
         if: ${{ runner.os == 'Windows' }}
         id: deskgap
@@ -157,8 +193,7 @@ jobs:
             xmcl-electron-app/dist/*.js.map
             xmcl-electron-app/dist/renderer/assets/*.js.map
       - name: Upload Build
-        # Windows .appx in this artifact is UNSIGNED. The `release` job creates a
-        # draft; `Sign Release` signs APPX before publication. DeskGap is excluded.
+        # The Windows setup exe here is signed (or absent); DeskGap is excluded from the release.
         if: ${{ startsWith(github.event.head_commit.message, 'chore(release)') || inputs.publish == 'dev' }}
         uses: actions/upload-artifact@v6
         with:
@@ -391,7 +426,8 @@ jobs:
           version=$(node -p "require('./xmcl-electron-app/package.json').version")
           mkdir -p release
           # electron-builder output is nested; installers are the only files the manifest can match.
-          find build -maxdepth 3 -type f \( -name 'vardrynn-*.dmg' -o -name 'vardrynn-*.deb' \) -exec cp {} release/ \;
+          # Windows builds only keep the setup exe once its signature verified (Verify Windows signatures).
+          find build -maxdepth 3 -type f \( -name 'vardrynn-*.dmg' -o -name 'vardrynn-*.deb' -o -name 'vardrynn-*-setup-x64.exe' \) -exec cp {} release/ \;
           pnpm tsx scripts/vardrynn-release.ts manifest \
             --version "$version" --channel "$TARGET" --dir release \
             --download-base "${S3_ENDPOINT%/}/$S3_BUCKET/$version" --notes-url "$NOTES_URL" \
