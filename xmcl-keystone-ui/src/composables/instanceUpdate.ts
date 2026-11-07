@@ -1,4 +1,4 @@
-import { InstanceData, InstanceFile, InstanceUpstream } from '@xmcl/instance'
+import { InstanceData, InstanceFile, InstanceManifest, InstanceUpstream } from '@xmcl/instance'
 import { CachedFTBModpackVersionManifest } from '@xmcl/runtime-api'
 import { InjectionKey, Ref } from 'vue'
 import { DialogKey } from './dialog'
@@ -12,6 +12,12 @@ export type InstanceInstallOptions = {
   type: 'ftb'
   newManifest: CachedFTBModpackVersionManifest
   oldManifest: CachedFTBModpackVersionManifest
+  upstream: InstanceUpstream
+} | {
+  /** Moves an instance between two versions of a pack given as instance manifests (Vardrynn packs). */
+  type: 'manifest'
+  oldManifest: InstanceManifest
+  newManifest: InstanceManifest
   upstream: InstanceUpstream
 } | {
   type: 'updates'

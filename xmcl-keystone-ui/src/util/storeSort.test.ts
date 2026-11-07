@@ -5,9 +5,10 @@ describe('store sorting', () => {
   it('uses category restrictions as well as source exclusions', () => {
     expect(getStoreSources([], [], 42)).toEqual(['curseforge'])
     expect(getStoreSources([], ['adventure'], undefined)).toEqual(['modrinth'])
-    expect(getStoreSources(['modrinth', 'ftb'], [], undefined)).toEqual(['curseforge'])
+    expect(getStoreSources(['modrinth', 'ftb', 'vardrynn'], [], undefined)).toEqual(['curseforge'])
+    expect(getStoreSources(['ftb'], [], undefined)).toEqual(['vardrynn', 'modrinth', 'curseforge'])
     expect(getStoreSources(['curseforge'], [], 42)).toEqual([])
-    expect(getStoreSources([], ['adventure'], 42)).toEqual(['modrinth', 'curseforge', 'ftb'])
+    expect(getStoreSources([], ['adventure'], 42)).toEqual(['vardrynn', 'modrinth', 'curseforge', 'ftb'])
   })
 
   const a = { id: 'a', sortMetrics: { downloads: 900, updated: 300, newest: 100 } }

@@ -127,7 +127,7 @@ export interface UpstreamHeaderProps {
   description: string
   infos: Highlight[]
   categories: CategoryChipProps[]
-  type: 'curseforge' | 'modrinth' | 'ftb'
+  type: 'curseforge' | 'modrinth' | 'ftb' | 'vardrynn'
   store: string
 }
 
@@ -161,6 +161,7 @@ const sourceLabel = computed(() => {
     case 'modrinth': return 'Modrinth'
     case 'curseforge': return 'CurseForge'
     case 'ftb': return 'FTB'
+    case 'vardrynn': return 'Vardrynn'
     default: return ''
   }
 })

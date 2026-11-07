@@ -38,6 +38,10 @@
             v-else-if="instance.upstream && instance.upstream.type === 'ftb-modpack'"
             :id="instance.upstream.id"
           />
+          <HomeUpstreamVardrynn
+            v-else-if="instance.upstream && instance.upstream.type === 'vardrynn-pack'"
+            :slug="instance.upstream.slug"
+          />
         </template>
       </div>
       <HomeFocusFooter v-else class="absolute bottom-0 left-0 pb-[26px]" />
@@ -65,6 +69,7 @@ import HomeBedrock from './HomeBedrock.vue'
 import HomeGrid from './HomeGrid.vue'
 import HomeUpstreamCurseforge from './HomeUpstreamCurseforge.vue'
 import HomeUpstreamFeedTheBeast from './HomeUpstreamFeedTheBeast.vue'
+import HomeUpstreamVardrynn from './HomeUpstreamVardrynn.vue'
 import HomeUpstreamModrinth from './HomeUpstreamModrinth.vue'
 
 const isFocus = useInFocusMode()

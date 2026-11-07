@@ -499,6 +499,18 @@ async function getUpgradeValueFromParam(
     })
   }
 
+  if (param.type === 'manifest') {
+    return markRaw({
+      edit: { runtime: param.newManifest.runtime, upstream: param.upstream },
+      installation: {
+        path: instancePath.value,
+        oldFiles: param.oldManifest.files,
+        files: param.newManifest.files,
+        upstream: param.upstream,
+      },
+    })
+  }
+
   if (param.type === 'upstream') {
     const instancePath = param.instancePath
     const modpack = param.modpack

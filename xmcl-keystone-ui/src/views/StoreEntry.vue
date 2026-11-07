@@ -47,7 +47,7 @@
             <v-select
               v-model="sort"
               :items="sortBy"
-              :disabled="sources.length === 0 || (sources.length === 1 && sources[0] === 'ftb')"
+              :disabled="sources.every((s) => s === 'ftb' || s === 'vardrynn')"
               :aria-label="t('modrinth.sort.title')"
               item-title="text"
               item-value="value"
@@ -305,6 +305,7 @@
 import CurseforgeIcon from '@/components/CurseforgeIcon.vue'
 import FilterCard from '@/components/FilterCard.vue'
 import FTBIcon from '@/components/FTBIcon.vue'
+import VardrynnIcon from '@/components/VardrynnIcon.vue'
 import ModrinthIcon from '@/components/ModrinthIcon.vue'
 import StoreExploreCardModern from '@/components/StoreExploreCardModern.vue'
 import StoreGallery from '@/components/StoreGallery.vue'
@@ -445,6 +446,7 @@ const sourcesList = [
   { id: 'modrinth', text: 'Modrinth', component: ModrinthIcon },
   { id: 'curseforge', text: 'CurseForge', component: CurseforgeIcon },
   { id: 'ftb', text: 'FTB', component: FTBIcon },
+  { id: 'vardrynn', text: 'Vardrynn', component: VardrynnIcon },
 ]
 
 function toggleSource(id: string) {

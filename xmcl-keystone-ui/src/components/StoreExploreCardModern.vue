@@ -166,6 +166,8 @@ const sourceLabel = computed(() => {
       return 'CurseForge'
     case 'ftb':
       return 'FTB'
+    case 'vardrynn':
+      return 'Vardrynn'
     default:
       return props.value.type
   }
@@ -177,7 +179,7 @@ const sourceBadgeClass = computed(() => {
 
 export interface ExploreProjectModern {
   id: string
-  type: 'modrinth' | 'curseforge' | 'ftb'
+  type: 'modrinth' | 'curseforge' | 'ftb' | 'vardrynn'
   title: string
   iconUrl: string
   description: string
