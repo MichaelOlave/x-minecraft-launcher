@@ -2,7 +2,7 @@
 
 Windows builds are signed with **Azure Artifact Signing** (formerly Trusted Signing). electron-builder signs `vardrynn.exe`, the setup exe and its uninstaller during the CI build, with a Microsoft timestamp. A signed build passes SmartScreen without the "unknown publisher" block, and it is the only kind of Windows installer CI puts into a release, so it is also what the in-app updater installs.
 
-Without the settings below the build still works but is unsigned, and CI leaves the installer out of the release.
+Signing is optional. Without the settings below, the installer ships unsigned: Windows SmartScreen warns on the first install (More info → Run anyway), but in-app updates still work, because the launcher checks each update against the Vardrynn release key and SmartScreen does not inspect files the launcher downloads itself. Once signing is set up, the repository variable `VARDRYNN_REQUIRE_WINDOWS_SIGNING=true` makes CI refuse any unsigned Windows release.
 
 ## One-time Azure setup (about an hour of work, then 1-7 days for identity checks)
 
