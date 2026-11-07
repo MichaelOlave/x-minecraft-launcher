@@ -94,6 +94,7 @@
 
     <div v-roving-tabindex role="group" class="sidebar__section">
       <AppSideBarItem
+        v-if="SHOW_TOGETHER"
         data-testid="nav-multiplayer"
         v-shared-tooltip.right="() => t('multiplayer.togetherName')"
         clickable
@@ -215,6 +216,7 @@
       </v-btn>
 
       <v-btn
+        v-if="SHOW_TOGETHER"
         data-testid="nav-multiplayer"
         v-shared-tooltip.bottom="t('multiplayer.togetherName')"
         icon
@@ -255,6 +257,7 @@
 </template>
 
 <script lang="ts" setup>
+import { SHOW_TOGETHER } from '@/util/features'
 import PlayerAvatar from '@/components/PlayerAvatar.vue'
 import { AGENT_UI_ENABLED, useAgentChatEntry, useAgentChatStatus } from '@/composables/agentChat'
 import { useDragAutoScroll } from '@/composables/dragAutoScroll'

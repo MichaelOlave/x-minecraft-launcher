@@ -316,6 +316,7 @@
 </template>
 
 <script setup lang="ts">
+import { SHOW_TOGETHER } from '@/util/features'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { BaseServiceKey, LaunchServiceKey, BedrockServiceKey, TaskState } from '@xmcl/runtime-api'
@@ -490,7 +491,7 @@ const tabs = computed(() => {
     { id: 'library', label: 'bigPicture.library', icon: 'sports_esports' },
     { id: 'discover', label: 'bigPicture.discover', icon: 'explore' },
   ]
-  if (!isBedrock.value) {
+  if (SHOW_TOGETHER && !isBedrock.value) {
     list.push({ id: 'multiplayer', label: 'bigPicture.multiplayer', icon: 'hub' })
   }
   list.push({ id: 'settings', label: 'bigPicture.settings', icon: 'settings' })
