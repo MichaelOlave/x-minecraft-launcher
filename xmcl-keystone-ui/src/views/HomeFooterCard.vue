@@ -207,6 +207,10 @@ import HomeUpstreamHeader from './HomeUpstreamHeader.vue'
 import { useDialog } from '@/composables/dialog'
 import { InstanceInstallDialog } from '@/composables/instanceUpdate'
 import { useDateString } from '@/composables/date'
+import { useNotifier } from '@/composables/notifier'
+import { useVardrynnPackUpdate } from '@/composables/vardrynnPack'
+import { VardrynnPackServiceKey } from '@xmcl/runtime-api'
+import useSWRV from 'swrv'
 
 const { enabledMods } = injection(kInstanceModsContext)
 const { enabled: enabledResourcePacks } = injection(kInstanceResourcePacks)
@@ -294,9 +298,30 @@ const latestVersions = computed(() => {
   }
   return []
 })
+// Vardrynn packs list every version; updating opens the install dialog with both manifests.
+const { getVardrynnPack } = useService(VardrynnPackServiceKey)
+const vardrynnPack = useSWRV(
+  computed(() => upstream.value?.type === 'vardrynn-pack' ? `vardrynn-pack:${upstream.value.slug}` : null),
+  () => upstream.value?.type === 'vardrynn-pack' ? getVardrynnPack(upstream.value.slug) : undefined,
+)
+const { updatePack } = useVardrynnPackUpdate()
+const { notify } = useNotifier()
+async function onUpdateVardrynn(slug: string, fromVersionId: string, toVersionId: string) {
+  if (updating.value) return
+  updating.value = true
+  try {
+    await updatePack(slug, fromVersionId, toVersionId)
+  } catch (e) {
+    notify({ level: 'error', title: (e as Error).message })
+  } finally {
+    updating.value = false
+  }
+}
+
 const loadingUpdates = computed(() => {
   if (upstream.value?.type === 'modrinth-modpack') return modrinthVersions.isValidating.value
   if (upstream.value?.type === 'curseforge-modpack') return curseforgeFiles.isValidating.value
+  if (upstream.value?.type === 'vardrynn-pack') return vardrynnPack.isValidating.value
   return false
 })
 
@@ -648,6 +673,18 @@ const items = computed<FooterItem[]>(() => {
     }
     return ordered
   } else if (selected.value === 1) {
+    const up = upstream.value
+    if (up?.type === 'vardrynn-pack') {
+      return (vardrynnPack.data.value?.versions ?? []).map((v): FooterItem => ({
+        icon: 'update',
+        tooltip: getDateString(v.publishedAt),
+        text: v.version,
+        highlighted: up.versionId === v.id,
+        install: () => onUpdateVardrynn(up.slug, up.versionId, v.id),
+        setting: () => push(`/store/vardrynn/${up.slug}`),
+        drop: () => {},
+      }))
+    }
     return latestVersions.value.map((v) => {
       const version: StoreProjectVersion = 'name' in v ? {
         id: v.id,

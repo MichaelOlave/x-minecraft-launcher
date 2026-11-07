@@ -1,7 +1,7 @@
 import type { MarketSort } from '../composables/marketSort'
 import { mergeSorted } from './sort'
 
-export type StoreSource = 'modrinth' | 'curseforge' | 'ftb'
+export type StoreSource = 'modrinth' | 'curseforge' | 'ftb' | 'vardrynn'
 
 export interface StoreSortMetrics {
   downloads: number
@@ -14,7 +14,7 @@ export function getStoreSources(omitted: string[], modrinthCategories: string[],
     ? ['curseforge']
     : modrinthCategories.length && curseforgeCategory === undefined
       ? ['modrinth']
-      : ['modrinth', 'curseforge', 'ftb']
+      : ['vardrynn', 'modrinth', 'curseforge', 'ftb']
   return sources.filter(source => !omitted.includes(source))
 }
 

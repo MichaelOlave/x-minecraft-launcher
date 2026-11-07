@@ -6,7 +6,7 @@ This file is the contract between the launcher UI in `xmcl-keystone-ui/` and the
 
 If the anchor you need is not here, add a `data-testid="…"` attribute to the corresponding Vue component, then re-run `pnpm gen:testids`.
 
-**Total anchors:** 339 (in 330 Vue files)
+**Total anchors:** 339 (in 333 Vue files)
 
 | Test ID | Defined in |
 |---|---|

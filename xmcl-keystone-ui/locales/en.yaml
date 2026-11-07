@@ -917,6 +917,8 @@ vardrynnPack:
     versionExists: This version is already published. Choose a new version number.
   existing: "This pack is already published. Its latest version is {version}."
   flaggedFiles: "Files that need attention: {count}"
+  latestVersion: Latest version
+  loaders: Loaders
   noFiles: No files are selected. Choose the files to include under Files to include.
   packTitle: Pack name
   publish: Publish to Vardrynn
@@ -932,6 +934,7 @@ vardrynnPack:
   unconfigured: This build is not connected to the Vardrynn service.
   uploadSize: "{size} will be uploaded to Vardrynn."
   versionInvalid: Use letters, digits, dots, dashes, underscores or plus signs.
+  versionMissing: This pack version is no longer available.
   source:
     curseforge: CurseForge
     link: Other link

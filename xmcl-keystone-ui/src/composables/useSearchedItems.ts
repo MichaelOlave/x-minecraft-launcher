@@ -10,7 +10,10 @@ import { injection } from '@/util/inject'
 import { getExpectedSize } from '@/util/size'
 import { getStoreSources, mergeStoreResults, StoreSortMetrics } from '@/util/storeSort'
 import { getSWRV } from '@/util/swrvGet'
-import { ProjectMappingServiceKey } from '@xmcl/runtime-api'
+import { ProjectMappingServiceKey, VardrynnPackServiceKey } from '@xmcl/runtime-api'
+import useSWRV from 'swrv'
+import { filterVardrynnPacks } from '@/util/vardrynnPack'
+import vardrynnMark from '@/assets/vardrynn-mark.png'
 import { Ref, computed, ref, watch } from 'vue'
 import { kSWRVConfig } from './swrvConfig'
 
@@ -93,6 +96,30 @@ export function useSearchedItems(options: UseSearchedItemsOptions) {
 
     if (!cancelled) ftbItems.value = result
   }, { immediate: true })
+
+  // Vardrynn: the service returns at most 100 packs, so they are filtered here and shown on page 1.
+  const { searchVardrynnPacks } = useService(VardrynnPackServiceKey)
+  const { data: vardrynnData, isValidating: vardrynnLoading } = useSWRV(
+    computed(() => `vardrynn-packs:${query.value}`),
+    // An unconfigured or unreachable service shows no packs rather than failing the search.
+    () => searchVardrynnPacks(query.value).catch(() => []),
+  )
+  const vardrynnItems = computed(() => {
+    if (page.value !== 1) return []
+    return filterVardrynnPacks(vardrynnData.value ?? [], gameVersion.value, modLoaders.value).map((p): StoreProject => ({
+      sortMetrics: { downloads: 0, updated: Date.parse(p.updatedAt), newest: Date.parse(p.createdAt) },
+      id: p.slug,
+      type: 'vardrynn',
+      title: p.title,
+      iconUrl: p.iconUrl || vardrynnMark,
+      description: p.summary,
+      author: '',
+      downloadCount: '',
+      updatedAt: getDateString(p.updatedAt),
+      version: p.latestVersion.minecraft,
+      gallery: [],
+    }))
+  })
 
   // Modrinth
   const {
@@ -201,7 +228,7 @@ export function useSearchedItems(options: UseSearchedItemsOptions) {
       return mapped
     })
 
-    const results = { modrinth: modrinths, curseforge: curseforges, ftb: ftbItems.value }
+    const results = { modrinth: modrinths, curseforge: curseforges, ftb: ftbItems.value, vardrynn: vardrynnItems.value }
     // A single provider's server-side ordering must survive unchanged across pages.
     if (sources.value.length === 1) return results[sources.value[0]]
     return mergeStoreResults(sources.value.map(source => results[source]), modrinthSort.value)
@@ -210,10 +237,11 @@ export function useSearchedItems(options: UseSearchedItemsOptions) {
   const pageCount = computed(() => Math.max(0, ...sources.value.map(source => {
     if (source === 'modrinth') return modrinthPageCount.value
     if (source === 'curseforge') return curseforgePageCount.value
+    if (source === 'vardrynn') return vardrynnItems.value.length ? 1 : 0
     const data = ftbData.value
     return data && 'packs' in data ? Math.ceil(data.packs.length / 5) : 0
   })))
-  const isSearching = computed(() => isModrinthSearching.value || isCurseforgeSearching.value || ftbLoading.value)
+  const isSearching = computed(() => isModrinthSearching.value || isCurseforgeSearching.value || ftbLoading.value || vardrynnLoading.value)
 
   return {
     items,

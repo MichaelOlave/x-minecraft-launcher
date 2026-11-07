@@ -116,6 +116,11 @@ export const router = createRouter({
           props: (route) => ({ id: Number(route.params.id) }),
         },
         {
+          path: 'vardrynn/:slug',
+          component: () => import('@/views/StoreProjectVardrynn.vue'),
+          props: (route) => ({ slug: String(route.params.slug) }),
+        },
+        {
           path: 'ftb/:id',
           component: () => import('@/views/StoreProjectFeedTheBeast.vue'),
           props: (route) => ({ id: Number(route.params.id) }),
