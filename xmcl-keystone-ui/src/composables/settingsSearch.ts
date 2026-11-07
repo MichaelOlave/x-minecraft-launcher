@@ -267,6 +267,23 @@ export function useSettingsSearchItems() {
 
     list.push({
       kind: 'switch',
+      id: 'setting.useOfficialLauncher',
+      title: t('setting.useOfficialLauncher'),
+      description: t('setting.useOfficialLauncherDescription'),
+      icon: 'rocket_launch',
+      group: globalGroup,
+      keywords: 'official mojang minecraft launcher curseforge profile play',
+      chip,
+      get value() {
+        return s.useOfficialLauncher
+      },
+      set value(v: boolean) {
+        s.useOfficialLauncherSet(v)
+      },
+    })
+
+    list.push({
+      kind: 'switch',
       id: 'globalInstance.fastLaunch',
       title: t('instanceSetting.fastLaunch'),
       description: t('instanceSetting.fastLaunchHint'),

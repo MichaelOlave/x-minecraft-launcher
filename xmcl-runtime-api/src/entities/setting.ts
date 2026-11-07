@@ -25,6 +25,8 @@ export class Settings implements SettingSchema {
   globalShowLog = false
   globalEnv: Record<string, string> = {}
   globalResolution: { width?: number; height?: number; fullscreen?: boolean; monitor?: string } = {}
+  /** Hand Java instances to the official Minecraft Launcher, like the old CurseForge app. */
+  useOfficialLauncher = true
   discordPresence = false
   developerMode = false
   disableTelemetry = false
@@ -119,6 +121,7 @@ export class Settings implements SettingSchema {
     this.globalDisableAuthlibInjector = config.globalDisableAuthlibInjector
     this.globalPreExecuteCommand = config.globalPreExecuteCommand
     this.globalEnv = config.globalEnv
+    this.useOfficialLauncher = config.useOfficialLauncher ?? true
     this.discordPresence = config.discordPresence
     this.developerMode = config.developerMode
     this.disableTelemetry = config.disableTelemetry
@@ -139,6 +142,10 @@ export class Settings implements SettingSchema {
 
   quickActionShortcutSet(shortcut: string) {
     this.quickActionShortcut = shortcut
+  }
+
+  useOfficialLauncherSet(enabled: boolean) {
+    if (typeof enabled === 'boolean') this.useOfficialLauncher = enabled
   }
 
   discordPresenceSet(presence: boolean) {

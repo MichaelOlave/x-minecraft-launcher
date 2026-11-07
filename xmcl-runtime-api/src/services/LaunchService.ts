@@ -156,6 +156,18 @@ export interface GameProcess {
   options: LaunchOptions
 }
 
+/** The instance as the official launcher's profile list shows it. */
+export interface OfficialLauncherProfile {
+  name: string
+  /** The instance icon URL. */
+  icon?: string
+}
+
+export type OfficialLauncherResult =
+  | { launched: true; executable: string }
+  /** No classic launcher was found, so the caller should launch the game itself. */
+  | { launched: false; reason: 'notFound' }
+
 export interface CreateLaunchShortcutOptions {
   instancePath: string
   userId: string
@@ -173,6 +185,11 @@ export interface LaunchService extends GenericEventEmitter<LaunchServiceEventMap
    * @returns The process id. If the launch is failed, this will return undefined.
    */
   launch(options: LaunchOptions): Promise<number | undefined>
+  /**
+   * Open Mojang's official launcher with this instance added as its selected profile.
+   * The player presses Play there, and the official launcher handles sign-in.
+   */
+  launchOfficialLauncher(options: LaunchOptions, profile: OfficialLauncherProfile): Promise<OfficialLauncherResult>
   /**
    * Kill the Minecraft process
    * @param pid The process id

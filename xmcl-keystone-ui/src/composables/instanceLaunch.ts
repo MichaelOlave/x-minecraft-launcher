@@ -45,7 +45,7 @@ export function useInstanceLaunch(
   mods: Ref<ModFile[]>,
 ) {
   const { refreshUser } = useService(UserServiceKey)
-  const { launch, kill, on, removeListener, getGameProcess, getGameProcesses } =
+  const { launch, launchOfficialLauncher, kill, on, removeListener, getGameProcess, getGameProcesses } =
     useService(LaunchServiceKey)
   const { launch: launchBedrock } = useService(BedrockServiceKey)
   const {
@@ -210,6 +210,16 @@ export function useInstanceLaunch(
     return allMods.some((m) => m.modId === 'voicechat')
   }
 
+  /**
+   * The official launcher signs in with its own Microsoft account, so it cannot use
+   * third-party (authlib-injector) accounts. Those keep launching through Vardrynn.
+   */
+  function shouldUseOfficialLauncher(user: UserProfile, side: 'client' | 'server') {
+    return side === 'client'
+      && globalState?.state?.value?.useOfficialLauncher === true
+      && !/^https?:/i.test(user.authority ?? '')
+  }
+
   function getLaunchToken(userProfile: UserProfile, instancePath: string) {
     return `${userProfile.id}@${instancePath}`
     // return instancePath
@@ -245,6 +255,28 @@ export function useInstanceLaunch(
     }
     try {
       error.value = undefined
+      if (shouldUseOfficialLauncher(user, side)) {
+        // A dry run skips authlib-injector, which only matters when Vardrynn starts the game.
+        // The official launcher brings its own Java, so a missing one must not block it.
+        const options = await generateLaunchOptions(
+          instancePath,
+          user,
+          operationId,
+          side,
+          { ...overrides, java: overrides?.java ?? java.value?.path ?? 'java' },
+          true,
+          action,
+          state,
+        )
+        assignStatus(token, 'spawning-process', undefined, state)
+        if (state.aborted) return
+        const result = await action.run(() => launchOfficialLauncher(options, {
+          name: instance.value.name || instancePath,
+          icon: instance.value.icon || undefined,
+        }))
+        // Without the classic launcher installed, fall through and start the game directly.
+        if (result.launched) return { operationId }
+      }
       const options = await generateLaunchOptions(
         instancePath,
         user,
