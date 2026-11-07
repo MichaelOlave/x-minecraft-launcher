@@ -32,6 +32,8 @@ export interface ModpackModrinthContext {
   openBindDialog: () => Promise<void>
   openCreateDialog: () => Promise<void>
   openPublishDialog: (project: any) => void
+  /** Publishes the files selected for export as a Vardrynn pack. */
+  openVardrynnPublishDialog: () => void
   unbindProject: () => Promise<void>
 }
 

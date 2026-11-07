@@ -95,6 +95,23 @@
         @publish="modrinthContext.openPublishDialog"
         @unbind="modrinthContext.unbindProject"
       />
+      <v-divider class="my-2" />
+      <SettingItem :title="t('vardrynnPack.settingTitle')" :description="vardrynnPublishHint">
+        <template #preaction>
+          <v-icon>cloud_upload</v-icon>
+        </template>
+        <template #action>
+          <v-btn
+            data-testid="vardrynn-pack-publish"
+            variant="tonal"
+            prepend-icon="cloud_upload"
+            :disabled="!canPublishVardrynn"
+            @click="modrinthContext.openVardrynnPublishDialog"
+          >
+            {{ t('vardrynnPack.publish') }}
+          </v-btn>
+        </template>
+      </SettingItem>
     </template>
   </SettingCard>
 </template>
@@ -111,6 +128,9 @@ import { InstanceEditInjectionKey } from '../composables/instanceEdit'
 import { kUserContext } from '../composables/user'
 import { kModpackExport } from '@/composables/modpack'
 import { useGamepadAction } from '@/composables/gamepad'
+import { kFlights } from '@/composables/flights'
+import { kXmclAccount } from '@/composables/xmclAccount'
+import { VARDRYNN_API_ORIGIN_FLIGHT } from '@xmcl/runtime-api'
 
 const { data } = injection(InstanceEditInjectionKey)
 const { gameProfile } = injection(kUserContext)
@@ -118,6 +138,13 @@ const { t } = useI18n()
 
 const { modpackMetadata } = inject('modpackMetadata', useInstanceModpackMetadata())
 const { exportModpack, modrinthContext } = injection(kModpackExport)
+const { account } = injection(kXmclAccount)
+const flights = inject(kFlights, {})
+const vardrynnConfigured = computed(() => !!flights[VARDRYNN_API_ORIGIN_FLIGHT])
+const canPublishVardrynn = computed(() => vardrynnConfigured.value && !!account.value)
+const vardrynnPublishHint = computed(() => !vardrynnConfigured.value
+  ? t('vardrynnPack.unconfigured')
+  : account.value ? t('vardrynnPack.settingHint') : t('vardrynnPack.signInFirst'))
 
 const onIncr = (minor: boolean = false) => {
   modpackMetadata.modpackVersion =

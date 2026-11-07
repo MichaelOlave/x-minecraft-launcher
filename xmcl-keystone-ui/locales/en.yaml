@@ -905,6 +905,33 @@ me:
   recentPlay: Recent Play
 migrateMinecraft:
   name: Migrate Minecraft Files
+vardrynnPack:
+  description: Description
+  existing: "This pack is already published. Its latest version is {version}."
+  flaggedFiles: "{count} files need attention"
+  packTitle: Pack name
+  publish: Publish to Vardrynn
+  publishTitle: Publish Vardrynn pack
+  published: "Published {slug} {version}. {uploaded} files were uploaded."
+  settingHint: Share the selected files as a pack in the Vardrynn store. Mods can come from both Modrinth and CurseForge.
+  settingTitle: Vardrynn pack
+  signInFirst: Sign in to your Vardrynn account in Settings to publish packs.
+  slug: Pack ID
+  slugHint: Lowercase letters, digits and dashes. It cannot change after the first version.
+  slugInvalid: Use lowercase letters, digits and dashes, starting and ending with a letter or digit.
+  summary: Summary
+  unconfigured: This build is not connected to the Vardrynn service.
+  uploadSize: "{size} will be uploaded to Vardrynn."
+  versionInvalid: Use letters, digits, dots, dashes, underscores or plus signs.
+  source:
+    curseforge: CurseForge
+    link: Other link
+    modrinth: Modrinth
+    upload: Uploaded
+  warning:
+    curseforge-restricted: Author blocks downloads by other apps
+    too-large: Over 50 MB; cannot be uploaded
+    unlisted-mod: Mod on neither site; upload only if its license allows it
 xmclAccount:
   accountSummary: Account
   createdAt: Created {date}

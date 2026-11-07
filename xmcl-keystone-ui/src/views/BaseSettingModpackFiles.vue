@@ -361,6 +361,7 @@ import { useInstanceModpackMetadata } from '@/composables/instanceModpackMetadat
 import { kInstanceVersion } from '@/composables/instanceVersion'
 import { kInstanceLaunch } from '@/composables/instanceLaunch'
 import { kModpackExport } from '@/composables/modpack'
+import { VardrynnPackPublishDialogKey } from '@/composables/vardrynnPackPublish'
 import { useInstanceVersionServerInstall } from '@/composables/instanceVersionServerInstall'
 import { kUserContext } from '@/composables/user'
 import { vSharedTooltip } from '@/directives/sharedTooltip'
@@ -456,6 +457,7 @@ const boundProjectId = computed(() => typeof modpackMetadata.modrinth.projectId 
 const { show: showCreateProject, isShown: isCreateDialogShown } = useDialog(ModrinthProjectCreateDialogKey)
 const { show: showBindProject, isShown: isBindDialogShown } = useDialog(ModrinthProjectBindDialogKey)
 const { show: showPublishVersion } = useDialog(ModrinthVersionPublishDialogKey)
+const { show: showVardrynnPublish } = useDialog(VardrynnPackPublishDialogKey)
 const { interact, userData } = injection(kModrinthAuthenticatedAPI)
 const authenticatingAction = ref<'bind' | 'create'>()
 const bindingProject = computed(() => authenticatingAction.value === 'bind' || isBindDialogShown.value)
@@ -752,6 +754,15 @@ async function unbindProject() {
     unbindingProject.value = false
   }
 }
+function openVardrynnPublishDialog() {
+  showVardrynnPublish({
+    instancePath: instance.value.path,
+    files: getExportFiles().filter((f) => !f.source).map((f) => f.path),
+    name: instance.value.name,
+    description: instance.value.description || '',
+    currentVersion: modpackMetadata.modpackVersion,
+  })
+}
 function openPublishDialog(project: Project) {
   const options = getPublishOptions()
   const projectId = project?.id || boundProjectId.value
@@ -828,6 +839,7 @@ onMounted(() => {
     openBindDialog,
     openCreateDialog,
     openPublishDialog,
+    openVardrynnPublishDialog,
     unbindProject,
   })
 })
