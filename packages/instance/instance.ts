@@ -72,6 +72,17 @@ export const FTBUpstreamSchema = z.object({
 export type FTBUpstream = z.infer<typeof FTBUpstreamSchema>
 
 /**
+ * Vardrynn pack upstream configuration. See the `/v1/packs` routes in VARDRYNN_SERVICE_API.md.
+ */
+export const VardrynnUpstreamSchema = z.object({
+  type: z.literal('vardrynn-pack'),
+  slug: z.string(),
+  versionId: z.string(),
+})
+
+export type VardrynnUpstream = z.infer<typeof VardrynnUpstreamSchema>
+
+/**
  * Peer upstream configuration (for local sharing)
  */
 export const PeerUpstreamSchema = z.object({
@@ -107,6 +118,7 @@ export const InstanceUpstreamSchema = z.discriminatedUnion('type', [
   CurseforgeUpstreamSchema,
   ModrinthUpstreamSchema,
   FTBUpstreamSchema,
+  VardrynnUpstreamSchema,
   PeerUpstreamSchema,
   ServerUpstreamSchema,
 ])
@@ -355,6 +367,7 @@ export function isUpstreamSameOrigin(a: InstanceUpstream, b: InstanceUpstream): 
   if (a.type === 'curseforge-modpack') return a.modId === (b as any).modId
   if (a.type === 'modrinth-modpack') return a.projectId === (b as any).projectId
   if (a.type === 'ftb-modpack') return a.id === (b as any).id
+  if (a.type === 'vardrynn-pack') return a.slug === (b as VardrynnUpstream).slug
   if (a.type === 'peer') {
     const peer = b as PeerUpstream
     return (a.accountId || a.id) === (peer.accountId || peer.id)

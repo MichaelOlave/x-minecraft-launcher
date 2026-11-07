@@ -5,6 +5,8 @@ import {
   type PublishVardrynnPackOptions,
   type PublishVardrynnPackResult,
   type VardrynnPack,
+  type VardrynnPackListItem,
+  type VardrynnPackVersionDetail,
   type VardrynnPackPreview,
   type VardrynnPackService as IVardrynnPackService,
 } from '@xmcl/runtime-api'
@@ -40,6 +42,19 @@ export class VardrynnPackService extends AbstractService implements IVardrynnPac
     const response = await this.request('GET', `/v1/packs/${slug}`)
     if (response.status === 404) return undefined
     return (await this.parse(response)).pack
+  }
+
+  async searchVardrynnPacks(query?: string): Promise<VardrynnPackListItem[]> {
+    const q = query?.trim()
+    const response = await this.request('GET', q ? `/v1/packs?${new URLSearchParams({ q })}` : '/v1/packs')
+    return (await this.parse(response)).packs
+  }
+
+  async getVardrynnPackVersion(slug: string, versionId: string): Promise<VardrynnPackVersionDetail | undefined> {
+    if (!PACK_SLUG.test(slug)) return undefined
+    const response = await this.request('GET', `/v1/packs/${slug}/versions/${encodeURIComponent(versionId)}`)
+    if (response.status === 404) return undefined
+    return (await this.parse(response)).version
   }
 
   async publishVardrynnPack(options: PublishVardrynnPackOptions): Promise<PublishVardrynnPackResult> {

@@ -93,6 +93,10 @@ export interface VardrynnPackService {
   publishVardrynnPack(options: PublishVardrynnPackOptions): Promise<PublishVardrynnPackResult>
   /** Reads a published pack, or `undefined` when it does not exist or has no version yet. */
   getVardrynnPack(slug: string): Promise<VardrynnPack | undefined>
+  /** Lists published packs, newest version first. `query` matches the pack name. */
+  searchVardrynnPacks(query?: string): Promise<VardrynnPackListItem[]>
+  /** Reads one version with its manifest, or `undefined` when it does not exist. */
+  getVardrynnPackVersion(slug: string, versionId: string): Promise<VardrynnPackVersionDetail | undefined>
 }
 
 export const VardrynnPackServiceKey: ServiceKey<VardrynnPackService> = 'VardrynnPackService'

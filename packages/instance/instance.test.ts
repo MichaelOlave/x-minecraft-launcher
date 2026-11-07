@@ -18,6 +18,12 @@ describe('Instance Templates', () => {
       expect(isUpstreamSameOrigin(curseforge, modrinth)).toBe(false)
     })
 
+    it('matches Vardrynn packs by slug, not version', () => {
+      const a: InstanceUpstream = { type: 'vardrynn-pack', slug: 'folded', versionId: 'v1' }
+      expect(isUpstreamSameOrigin(a, { type: 'vardrynn-pack', slug: 'folded', versionId: 'v2' })).toBe(true)
+      expect(isUpstreamSameOrigin(a, { type: 'vardrynn-pack', slug: 'other', versionId: 'v1' })).toBe(false)
+    })
+
     it('should return true for same CurseForge modpacks', () => {
       const upstream1: InstanceUpstream = {
         type: 'curseforge-modpack',
