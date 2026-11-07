@@ -5,14 +5,15 @@ import { useDateString } from '@/composables/date'
 import { useDialog } from '@/composables/dialog'
 import { kInstance } from '@/composables/instance'
 import { AddInstanceDialogKey } from '@/composables/instanceTemplates'
-import { InstanceInstallDialog } from '@/composables/instanceUpdate'
 import { useMarkdown } from '@/composables/markdown'
 import { useNotifier } from '@/composables/notifier'
 import { getVardrynnLoaderNames } from '@/util/vardrynnPack'
+import { useVardrynnPackUpdate } from '@/composables/vardrynnPack'
 import { injection } from '@/util/inject'
 import type { VardrynnUpstream } from '@xmcl/instance'
 import { VardrynnPackServiceKey, type VardrynnPackVersion } from '@xmcl/runtime-api'
 import useSWRV from 'swrv'
+import vardrynnMark from '@/assets/vardrynn-mark.png'
 import HomeUpstreamBase from './HomeUpstreamBase.vue'
 import { UpstreamHeaderProps } from './HomeUpstreamHeader.vue'
 import { ProjectVersionProps } from './HomeUpstreamVersion.vue'
@@ -34,7 +35,7 @@ const headerData = computed(() => {
   if (!p) return undefined
   const result: UpstreamHeaderProps = {
     url: '',
-    icon: p.iconUrl || '',
+    icon: p.iconUrl || vardrynnMark,
     title: p.title,
     description: p.summary,
     categories: [],
@@ -90,23 +91,12 @@ watch(computed(() => state.bottom), (reached) => {
 })
 
 const { notify } = useNotifier()
-const { show } = useDialog(InstanceInstallDialog)
+const { updatePack } = useVardrynnPackUpdate()
 const updating = ref(false)
 async function onUpdate(v: ProjectVersionProps) {
   updating.value = true
   try {
-    const [oldVersion, newVersion] = await Promise.all([
-      getVardrynnPackVersion(props.slug, upstream.value.versionId),
-      getVardrynnPackVersion(props.slug, v.id),
-    ])
-    if (!newVersion) throw new Error(t('vardrynnPack.versionMissing'))
-    show({
-      type: 'manifest',
-      // A deleted old version compares against nothing, so every file is offered as new.
-      oldManifest: markRaw(oldVersion?.manifest ?? { runtime: newVersion.manifest.runtime, files: [] }),
-      newManifest: markRaw(newVersion.manifest),
-      upstream: { type: 'vardrynn-pack', slug: props.slug, versionId: v.id },
-    })
+    await updatePack(props.slug, upstream.value.versionId, v.id)
   } catch (e) {
     notify({ level: 'error', title: (e as Error).message })
   } finally {

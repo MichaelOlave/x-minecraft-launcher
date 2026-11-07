@@ -13,6 +13,7 @@ import { getSWRV } from '@/util/swrvGet'
 import { ProjectMappingServiceKey, VardrynnPackServiceKey } from '@xmcl/runtime-api'
 import useSWRV from 'swrv'
 import { filterVardrynnPacks } from '@/util/vardrynnPack'
+import vardrynnMark from '@/assets/vardrynn-mark.png'
 import { Ref, computed, ref, watch } from 'vue'
 import { kSWRVConfig } from './swrvConfig'
 
@@ -110,7 +111,7 @@ export function useSearchedItems(options: UseSearchedItemsOptions) {
       id: p.slug,
       type: 'vardrynn',
       title: p.title,
-      iconUrl: p.iconUrl ?? '',
+      iconUrl: p.iconUrl || vardrynnMark,
       description: p.summary,
       author: '',
       downloadCount: '',

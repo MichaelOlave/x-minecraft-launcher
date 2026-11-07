@@ -2,6 +2,7 @@ import type { RuntimeVersions } from '@xmcl/instance'
 import {
   InstanceInstallServiceKey,
   InstanceServiceKey,
+  VardrynnPackServiceKey,
   type CreateInstanceOption,
   type VardrynnPack,
   type VardrynnPackVersionDetail,
@@ -12,6 +13,8 @@ import { kInstanceVersion } from './instanceVersion'
 import { kInstanceVersionInstall } from './instanceVersionInstall'
 import { kInstances } from './instances'
 import { kJavaContext } from './java'
+import { useDialog } from './dialog'
+import { InstanceInstallDialog } from './instanceUpdate'
 import { useService } from './service'
 
 /** Creates an instance from a pack version and installs its files and runtime. */
@@ -56,4 +59,28 @@ export function useVardrynnPackInstall() {
   }
 
   return { installPack }
+}
+
+/** Opens the install dialog to move the current instance between two versions of a pack. */
+export function useVardrynnPackUpdate() {
+  const { getVardrynnPackVersion } = useService(VardrynnPackServiceKey)
+  const { show } = useDialog(InstanceInstallDialog)
+  const { t } = useI18n()
+
+  async function updatePack(slug: string, fromVersionId: string, toVersionId: string) {
+    const [oldVersion, newVersion] = await Promise.all([
+      getVardrynnPackVersion(slug, fromVersionId),
+      getVardrynnPackVersion(slug, toVersionId),
+    ])
+    if (!newVersion) throw new Error(t('vardrynnPack.versionMissing'))
+    show({
+      type: 'manifest',
+      // A deleted old version compares against nothing, so every file is offered as new.
+      oldManifest: markRaw(oldVersion?.manifest ?? { runtime: newVersion.manifest.runtime, files: [] }),
+      newManifest: markRaw(newVersion.manifest),
+      upstream: { type: 'vardrynn-pack', slug, versionId: toVersionId },
+    })
+  }
+
+  return { updatePack }
 }

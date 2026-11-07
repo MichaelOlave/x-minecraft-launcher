@@ -10,6 +10,7 @@ import { getVardrynnLoaderNames, getVardrynnPackMods } from '@/util/vardrynnPack
 import { injection } from '@/util/inject'
 import { VardrynnPackServiceKey } from '@xmcl/runtime-api'
 import useSWRV from 'swrv'
+import vardrynnMark from '@/assets/vardrynn-mark.png'
 
 const props = defineProps<{ slug: string }>()
 
@@ -28,7 +29,7 @@ const project = computed(() => {
   const result: IStoreProject = {
     id: p.slug,
     title: p.title,
-    iconUrl: p.iconUrl,
+    iconUrl: p.iconUrl || vardrynnMark,
     url: '',
     description: p.summary,
     categories: [],
