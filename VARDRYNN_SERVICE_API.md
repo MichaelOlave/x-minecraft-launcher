@@ -86,11 +86,12 @@ Write routes require a session whose account is listed in the Worker setting `PA
 
 Download URLs in a manifest are fetched by every player who installs the pack, so only publishers can add them. Public routes are not rate limited, like the database routes.
 
-Deployment (not done yet):
-- Apply `schema.sql` to `vardrynn-accounts-dev` and `vardrynn-accounts-prod`. It only adds tables.
-- Create a MinIO user per bucket that can read and write only `packs/*`, like the `databases/*` users, and set its keys as `S3_PACKS_ACCESS_KEY_ID` and `S3_PACKS_SECRET_ACCESS_KEY` on each Worker.
-- Set `PACK_PUBLISHER_ACCOUNT_IDS` on each Worker. Production needs a sign-in first to create the account.
-- Upload `s3.js` and `packs.js` with the other modules, keeping every existing binding.
+Deployment (2026-11-06):
+- Both Workers run `worker.js`, `accounts.js`, `multiplayer.js`, `curseforge.js`, `packs.js` and `s3.js` from `a66b9948d`, uploaded through the Scripts API with `keep_bindings` for `d1`, `secret_text`, `plain_text`, `ratelimit` and `durable_object_namespace`. Settings reads before and after differ only by the two new secrets.
+- `S3_PACKS_ACCESS_KEY_ID` and `S3_PACKS_SECRET_ACCESS_KEY` are new MinIO users `vardrynn-releases-{dev,prod}-packs`, limited to get and put under `packs/*` in their own bucket (no list or delete). Infisical `homelab prod` `/storage/docker01/minio/vardrynn/{dev,prod}` is authoritative; see `LiveNetwork/minio/vardrynn/README.md`. Checked through `s3.olaveapi.com`: writes outside `packs/`, deletes and the other bucket are refused.
+- The `packs` and `pack_versions` tables and their index were added to `vardrynn-accounts-dev` and `vardrynn-accounts-prod` with the D1 query API (the Cloudflare token in `/cloud/cloudflare` gained `D1: Edit` for this). Existing tables were unchanged.
+- On both origins `/v1/status`, `/v1/curseforge/...`, `/v1/databases/...` and `/v1/releases/latest` return 200, account and room routes 401 without a session, `/v1/packs` returns an empty list, an unknown pack file 404 and an unauthenticated publish 401.
+- `PACK_PUBLISHER_ACCOUNT_IDS` is not set yet, so nobody can publish until it is.
 
 ## Offline behavior
 
