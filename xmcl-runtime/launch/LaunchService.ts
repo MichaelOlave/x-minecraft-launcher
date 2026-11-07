@@ -1,15 +1,15 @@
 import { recoverRestore } from '~/infra/recoverRestore'
 import { getRestoreGate } from '~/infra/restoreGate'
 import { MinecraftFolder, type LaunchOption as ResolvedLaunchOptions, type ResolvedVersion, type ServerOptions, type ResolvedServerVersion, createMinecraftProcessWatcher, generateArguments, generateArgumentsServer, launch, launchServer } from '@xmcl/core'
-import { AUTHORITY_DEV, type CreateLaunchShortcutOptions, type GameProcess, type LaunchService as ILaunchService, LaunchException, type LaunchOptions, LaunchServiceKey } from '@xmcl/runtime-api'
+import { AUTHORITY_DEV, type CreateLaunchShortcutOptions, type OfficialLauncherProfile, type OfficialLauncherResult, type GameProcess, type LaunchService as ILaunchService, LaunchException, type LaunchOptions, LaunchServiceKey } from '@xmcl/runtime-api'
 import { offline } from '@xmcl/user'
 import { ChildProcess, spawn } from 'child_process'
 import createDesktopShortcut, { type ShortcutOptions } from 'create-desktop-shortcuts'
 import vbTextContent from 'create-desktop-shortcuts/src/windows.vbs'
 import { randomUUID } from 'crypto'
 import { constants, existsSync } from 'fs'
-import { access, stat, writeFile } from 'fs-extra'
-import { EOL } from 'os'
+import { access, readJson, stat, writeFile, writeJson } from 'fs-extra'
+import { EOL, homedir } from 'os'
 import { basename, dirname, join } from 'path'
 import { Readable } from 'stream'
 import { finished } from 'stream/promises'
@@ -28,6 +28,7 @@ import { UTF8 } from '../util/encoding'
 import type { LaunchMiddleware } from './LaunchMiddleware'
 import { ensureDir } from '@xmcl/installer/utils'
 import { LaunchHistoryStore } from './LaunchHistoryStore'
+import { findOfficialLauncher, officialJavaArgs, officialLauncherCandidates, upsertOfficialProfile } from './officialLauncher'
 import { runWithInternalSpan } from '../infra/telemetry_context'
 
 type TrackedGameProcess = GameProcess & {
@@ -53,7 +54,7 @@ export class LaunchService extends AbstractService implements ILaunchService {
   ) {
     super(app)
     this.launchHistory = new LaunchHistoryStore(this.getAppDataPath('launch-history'))
-    getRestoreGate(app).guardMethods(this, ['launch'])
+    getRestoreGate(app).guardMethods(this, ['launch', 'launchOfficialLauncher'])
   }
 
   registerMiddleware(plugin: LaunchMiddleware) {
@@ -792,6 +793,82 @@ export class LaunchService extends AbstractService implements ILaunchService {
     return false
   }
 
+  async #readIcon(url: string): Promise<Buffer | undefined> {
+    const { body } = await this.app.protocol.handle({ method: 'GET', url })
+    if (!body) return undefined
+    if (body instanceof Buffer) return body
+    if (body instanceof Readable) {
+      const buffers = [] as Buffer[]
+      body.on('data', (b) => {
+        buffers.push(b)
+      })
+      await finished(body)
+      return Buffer.concat(buffers)
+    }
+    return Buffer.from(body)
+  }
+
+  async launchOfficialLauncher(options: LaunchOptions, profile: OfficialLauncherProfile): Promise<OfficialLauncherResult> {
+    await recoverRestore(this.app)
+    const candidates = officialLauncherCandidates(process.platform, process.env, homedir())
+    const executable = await findOfficialLauncher(candidates, path => access(path, constants.X_OK).then(() => true, () => false))
+    if (!executable) {
+      this.log('No classic Minecraft Launcher found, so the game will be launched directly.')
+      return { launched: false, reason: 'notFound' }
+    }
+
+    let version: ResolvedVersion
+    try {
+      version = await this.versionService.resolveLocalVersion(options.version)
+    } catch (e) {
+      throw new LaunchException({ type: 'launchNoVersionInstalled', options })
+    }
+
+    if (options.preExecuteCommand) {
+      await this.#execPreCommand(options.preExecuteCommand, options.gameDirectory)
+    }
+
+    let icon: string | undefined
+    if (profile.icon) {
+      // The launcher only shows PNG data URLs. Anything else keeps a built-in block icon.
+      const buffer = await this.#readIcon(profile.icon).catch(() => undefined)
+      if (buffer && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+        icon = `data:image/png;base64,${buffer.toString('base64')}`
+      }
+    }
+
+    // The launcher runs with Vardrynn's game folder as its work folder, so it reads this
+    // file and reuses the versions, libraries and assets Vardrynn already installed.
+    const root = this.getPath()
+    const profilesPath = join(root, 'launcher_profiles.json')
+    const existing = await readJson(profilesPath).catch(() => undefined)
+    await writeJson(profilesPath, upsertOfficialProfile(existing, {
+      instancePath: options.gameDirectory,
+      name: profile.name,
+      versionId: version.id,
+      icon,
+      javaArgs: officialJavaArgs(options.minMemory, options.maxMemory, options.vmOptions),
+      resolution: options.resolution?.fullscreen ? undefined : options.resolution,
+      now: new Date(),
+    }), { spaces: 2 })
+
+    this.log(`Opening the official Minecraft Launcher (${executable}) with ${version.id} for ${options.gameDirectory}`)
+    const child = spawn(executable, ['--workDir', root], {
+      cwd: dirname(executable),
+      detached: true,
+      stdio: 'ignore',
+    })
+    await new Promise<void>((resolve, reject) => {
+      child.once('spawn', () => resolve())
+      child.once('error', reject)
+    }).catch((e) => {
+      this.error(e as Error)
+      throw new LaunchException({ type: 'launchSpawnProcessFailed' }, `Cannot open the Minecraft Launcher: ${(e as Error).message}`)
+    })
+    child.unref()
+    return { launched: true, executable }
+  }
+
   async createLaunchShortcut(options: CreateLaunchShortcutOptions): Promise<void> {
     const iconUrl = options.icon
 
@@ -799,21 +876,8 @@ export class LaunchService extends AbstractService implements ILaunchService {
       ? join(options.instancePath, 'icon.ico')
       : join(options.instancePath, 'icon.png')
     if (iconUrl) {
-      const { body } = await this.app.protocol.handle({ method: "GET", url: iconUrl, })
-      let buffer: Buffer
-      if (body) {
-        if (body instanceof Buffer) {
-          buffer = body
-        } else if (body instanceof Readable) {
-          const buffers = [] as Buffer[]
-          body.on('data', (b) => {
-            buffers.push(b)
-          })
-          await finished(body)
-          buffer = Buffer.concat(buffers)
-        } else {
-          buffer = Buffer.from(body)
-        }
+      let buffer = await this.#readIcon(iconUrl)
+      if (buffer) {
         if (process.platform === 'win32') {
           const { createICO } = await import('png2icons')
           const result = createICO(buffer, 0, 0, true, true)

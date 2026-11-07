@@ -83,6 +83,8 @@ export const SettingSchema = z.object({
   globalPrependCommand: z.string().catch(''),
   /** Global pre-execute command */
   globalPreExecuteCommand: z.string().catch(''),
+  /** Open the official Minecraft Launcher with the instance selected instead of starting the game directly */
+  useOfficialLauncher: z.boolean().catch(true),
   /** The launch environment variables */
   globalEnv: z.record(z.string(), z.string()).catch({}),
   /** Discord presence setting */
