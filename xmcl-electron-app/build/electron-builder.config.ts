@@ -6,6 +6,22 @@ import { LAUNCHER_APP_ID, LAUNCHER_DISPLAY_NAME, LAUNCHER_NAME, LAUNCHER_PROTOCO
 
 dotenv()
 
+/**
+ * Azure Artifact Signing (formerly Trusted Signing) settings, or undefined when they are not all set.
+ * Authentication uses the Entra app in AZURE_TENANT_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET.
+ * See VARDRYNN_WINDOWS_SIGNING.md.
+ */
+export function windowsAzureSigning(env: NodeJS.ProcessEnv = process.env) {
+  const endpoint = env.VARDRYNN_AZURE_SIGNING_ENDPOINT
+  const codeSigningAccountName = env.VARDRYNN_AZURE_SIGNING_ACCOUNT
+  const certificateProfileName = env.VARDRYNN_AZURE_SIGNING_PROFILE
+  const publisherName = env.VARDRYNN_PUBLISHER_NAME
+  if (!endpoint || !codeSigningAccountName || !certificateProfileName || !publisherName) return undefined
+  return { endpoint, codeSigningAccountName, certificateProfileName, publisherName }
+}
+
+const azureSignOptions = windowsAzureSigning()
+
 const linuxPackageScripts = {
   afterInstall: 'build/linux/after-install.tpl',
   afterRemove: 'build/linux/after-remove.tpl',
@@ -103,10 +119,8 @@ export const config = {
   },
   win: {
     executableName: LAUNCHER_NAME,
-    signtoolOptions: {
-      certificateFile: undefined as string | undefined,
-      publisherName: process.env.VARDRYNN_PUBLISHER_NAME,
-    },
+    // Signs the app exe, the installer and the uninstaller during the build. Unsigned without it.
+    azureSignOptions,
     icon: 'icons/vardrynn.ico',
     electronLanguages: ['en-US'],
     target: [
@@ -121,7 +135,6 @@ export const config = {
           'ia32',
         ],
       },
-      'appx',
     ],
   },
   linux: {
