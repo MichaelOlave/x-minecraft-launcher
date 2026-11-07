@@ -35,7 +35,7 @@ The `release` job in `.github/workflows/build.yml` signs and publishes:
 
 The job runs in the GitHub environment `release`, which requires the repository owner's approval before it starts. Its secrets are `VARDRYNN_RELEASE_SIGNING_KEY` and the publishing pairs `VARDRYNN_S3_{DEV,PROD}_{ACCESS_KEY_ID,SECRET_ACCESS_KEY}`. Repository variables: `VARDRYNN_RELEASE_PUBLIC_KEY`, `VARDRYNN_S3_ENDPOINT`, `VARDRYNN_S3_{DEV,PROD}_BUCKET`, `VARDRYNN_DEV_API_BASE_URL`, and optionally `VARDRYNN_RELEASE_NOTES_URL` (defaults to the commit page). Signing refuses a key that does not match the public key. The packages, `release.json` and `SHA256SUMS` are also kept as the `vardrynn-release` workflow artifact.
 
-`VARDRYNN_API_BASE_URL` is deliberately unset (see `VARDRYNN_SERVICE_API.md`), so production builds report updates as `not-configured` until it is set to `https://api.olaveapi.com`.
+Since 2026-11-06 the variable `VARDRYNN_API_BASE_URL` is `https://api.olaveapi.com` (see `VARDRYNN_SERVICE_API.md`), so CI production builds check the production service. A build made without it reports updates as `not-configured`.
 
 **Key custody.** The production key pair was generated on 2026-11-05 in one process: the private half went straight into the `release` environment secret and was never written to disk or shown, so it cannot be recovered. Public key: `0mTr54fkHvFea8E+o+KDBZanknCmyrvH8QTFov6LQwQ=`. If the secret is lost or exposed, generate a new pair, replace the secret and variable, and ship a build with the new key through a channel users already trust; builds holding only the old key cannot verify releases signed by the new one.
 
@@ -75,12 +75,14 @@ Any `<version>/release.json` can be restored the same way. On an individual Mac,
 
 Deleted workflows: `deploy-release.yml` (Azure AppInstaller, `xmcl-page`, `@xmcl/app-*` npm packages, Homebrew tap, Discord/KOOK), `core-release.yml` (npm publishing of `@xmcl/*`) and `core-github-pages.yml` (`xmcl-page`). In `build.yml`: the Voxelum release action, tag push to `voxelum/x-minecraft-launcher`, `xmcl-page` changelog push, DeepSeek release notes, Azure source-map upload, SignPath publisher and the `ci010` reviewer.
 
+## Released through CI
+
+The `release` job has published from CI since 2026-11-06: `chore(release)` commits shipped 1.0.0 (run 42299038395) and 1.1.0 (run 42325791069) to `vardrynn-releases-prod`, and manual `publish: dev` runs published 0.73.1 to `vardrynn-releases-dev`. On 2026-11-07, `api.olaveapi.com/v1/releases/latest` served 1.1.0 (published 02:03 UTC) with signed `darwin-arm64`, `darwin-x64`, `linux-arm64` and `linux-x64` packages. An update between two CI-built releases has not been tried on a real machine; the in-place updates below used hand-published dev builds.
+
 ## Not done
 
 These need something this repository cannot supply on its own:
 
-- **The CI job has not run.** This branch is not on GitHub yet (`origin/master` is still the upstream history), so the `release` job needs the work merged to `master`, then a `chore(release)` commit or a manual `publish: dev` run. Its publish script and every step it runs were exercised by hand (below).
-- **No production release is published.** It waits on the first CI run, and on `VARDRYNN_API_BASE_URL` being set; until then, production builds cannot check for updates.
 - **Code signing.** macOS builds are ad-hoc signed and not notarized, because there is no Apple Developer ID. They update in place (below), but a first install from a browser download meets Gatekeeper. Windows builds are signed with Azure Artifact Signing once it is set up (`VARDRYNN_WINDOWS_SIGNING.md`).
 - **x64.** Only arm64 was exercised on macOS and Linux.
 - **Windows has not run.** The installer and signing were exercised only by a macOS cross-build (2026-11-06, unsigned) and unit tests. The Azure account is not set up yet, and no install, signed build or in-place update has run on Windows.
