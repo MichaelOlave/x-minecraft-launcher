@@ -92,20 +92,22 @@ jobs:
           AZURE_CLIENT_ID: ${{ runner.os == 'Windows' && secrets.AZURE_CLIENT_ID || '' }}
           AZURE_CLIENT_SECRET: ${{ runner.os == 'Windows' && secrets.AZURE_CLIENT_SECRET || '' }}
       - name: Verify Windows signatures
-        # A release may only carry a Windows installer whose files are Authenticode-signed by
-        # VARDRYNN_PUBLISHER_NAME. Without signing set up, the installer is left out of the release.
+        # With signing set up, the Windows installer must be Authenticode-signed by VARDRYNN_PUBLISHER_NAME.
+        # Without it, the installer ships unsigned: updates are still checked against the release key.
+        # Set VARDRYNN_REQUIRE_WINDOWS_SIGNING=true to refuse unsigned Windows releases instead.
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
         env:
           PUBLISHER: ${{ vars.VARDRYNN_PUBLISHER_NAME }}
+          REQUIRE_SIGNING: ${{ vars.VARDRYNN_REQUIRE_WINDOWS_SIGNING }}
           SIGNING: ${{ vars.VARDRYNN_AZURE_SIGNING_ENDPOINT != '' && vars.VARDRYNN_AZURE_SIGNING_ACCOUNT != '' && vars.VARDRYNN_AZURE_SIGNING_PROFILE != '' && vars.VARDRYNN_PUBLISHER_NAME != '' }}
         run: |
           $out = 'xmcl-electron-app/build/output'
           $setup = @(Get-ChildItem $out -Filter 'vardrynn-*-setup-x64.exe')
           if ($setup.Count -eq 0) { Write-Host 'No Windows installer in this build.'; exit 0 }
           if ($env:SIGNING -ne 'true') {
-            Write-Host '::warning::Windows signing is not configured; the unsigned installer is left out of the release.'
-            Get-ChildItem $out -Filter 'vardrynn-*-setup-x64.exe*' | Remove-Item
+            if ($env:REQUIRE_SIGNING -eq 'true') { throw 'VARDRYNN_REQUIRE_WINDOWS_SIGNING is set but Windows signing is not configured' }
+            Write-Host '::warning::Windows signing is not configured; the installer is unsigned and SmartScreen will warn on first install.'
             exit 0
           }
           $files = @($setup.FullName, "$out/win-unpacked/vardrynn.exe") | Where-Object { Test-Path $_ }
@@ -193,7 +195,7 @@ jobs:
             xmcl-electron-app/dist/*.js.map
             xmcl-electron-app/dist/renderer/assets/*.js.map
       - name: Upload Build
-        # The Windows setup exe here is signed (or absent); DeskGap is excluded from the release.
+        # The Windows setup exe here is signed when signing is configured; DeskGap is excluded from the release.
         if: ${{ startsWith(github.event.head_commit.message, 'chore(release)') || inputs.publish == 'dev' }}
         uses: actions/upload-artifact@v6
         with:
@@ -426,7 +428,7 @@ jobs:
           version=$(node -p "require('./xmcl-electron-app/package.json').version")
           mkdir -p release
           # electron-builder output is nested; installers are the only files the manifest can match.
-          # Windows builds only keep the setup exe once its signature verified (Verify Windows signatures).
+          # A signed Windows setup exe was verified by `Verify Windows signatures`; an unsigned one is allowed.
           find build -maxdepth 3 -type f \( -name 'vardrynn-*.dmg' -o -name 'vardrynn-*.deb' -o -name 'vardrynn-*-setup-x64.exe' \) -exec cp {} release/ \;
           pnpm tsx scripts/vardrynn-release.ts manifest \
             --version "$version" --channel "$TARGET" --dir release \
