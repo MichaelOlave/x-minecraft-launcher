@@ -113,6 +113,7 @@
 
         <!-- Multiplayer -->
         <AppSideBarNotchItem
+          v-if="SHOW_TOGETHER"
           data-testid="nav-multiplayer"
           icon="hub"
           :icon-size="iconSize"
@@ -153,6 +154,7 @@
 </template>
 
 <script lang="ts" setup>
+import { SHOW_TOGETHER } from '@/util/features'
 import PlayerAvatar from '@/components/PlayerAvatar.vue'
 import { AGENT_UI_ENABLED, useAgentChatEntry, useAgentChatStatus } from '@/composables/agentChat'
 import { useDialog } from '@/composables/dialog'
