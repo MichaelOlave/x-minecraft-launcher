@@ -17,6 +17,7 @@ Updates come only from the Vardrynn service and are accepted only when an Ed2551
 
 - **macOS:** a detached `/bin/sh` helper waits for the launcher to exit, mounts the verified dmg read-only, refuses an `.app` whose `CFBundleIdentifier` differs from the running one, copies it beside the current bundle, then swaps the two. Any failure puts the old bundle back. Either way it reopens the launcher. Its output goes to `<appData>/vardrynn/update-install.log`. A translocated, read-only or non-bundle install falls back to opening the dmg.
 - **Linux:** `pkexec /usr/bin/dpkg -i <deb>` shows the system password prompt; on success the launcher relaunches into the new version. A dismissed prompt or a failed install leaves the old version running and reports the error. Without `pkexec`, or for a non-deb install, the package is opened instead.
+- **Windows:** the verified `vardrynn-<version>-setup-x64.exe` runs detached with `--updated /S --force-run` and the launcher quits. The NSIS installer waits for it to exit, installs silently into the existing folder (shortcuts and game data kept), then reopens the launcher. Only an installed copy (one with `Uninstall Vardrynn.exe` beside it) is updated this way; a portable zip copy opens the installer instead.
 - Staged packages that are not newer than the running version are deleted at the next update check.
 
 These releases use the `verified` update operation. `manual` keeps its existing meaning in the UI: the launcher cannot update itself and the user must redownload. Download and install failures are shown in the update dialog.
@@ -48,7 +49,7 @@ S3_ENDPOINT=https://s3.olaveapi.com S3_BUCKET=<bucket> AWS_ACCESS_KEY_ID=... AWS
   scripts/vardrynn-publish.sh <packages>
 ```
 
-Only `.dmg` (macOS) and `.deb` (Linux) are offered as updates. Windows is excluded until packages carry an Authenticode signature the OS will accept.
+Only `.dmg` (macOS), `.deb` (Linux) and `-setup-x64.exe` (Windows) are offered as updates. A Windows installer reaches the release only after the `Verify Windows signatures` CI step confirms a valid, timestamped Authenticode signature from `VARDRYNN_PUBLISHER_NAME`; otherwise CI drops it with a warning. Setup: `VARDRYNN_WINDOWS_SIGNING.md`.
 
 ## Serving a release
 
@@ -80,9 +81,9 @@ These need something this repository cannot supply on its own:
 
 - **The CI job has not run.** This branch is not on GitHub yet (`origin/master` is still the upstream history), so the `release` job needs the work merged to `master`, then a `chore(release)` commit or a manual `publish: dev` run. Its publish script and every step it runs were exercised by hand (below).
 - **No production release is published.** It waits on the first CI run, and on `VARDRYNN_API_BASE_URL` being set; until then, production builds cannot check for updates.
-- **Code signing.** macOS builds are ad-hoc signed and not notarized, because there is no Apple Developer ID. They update in place (below), but a first install from a browser download meets Gatekeeper. Windows updates stay excluded until Authenticode signing exists.
+- **Code signing.** macOS builds are ad-hoc signed and not notarized, because there is no Apple Developer ID. They update in place (below), but a first install from a browser download meets Gatekeeper. Windows builds are signed with Azure Artifact Signing once it is set up (`VARDRYNN_WINDOWS_SIGNING.md`).
 - **Windows and x64.** Only arm64 was exercised on macOS and Linux. Windows has no update path.
-- **Windows installer.** Windows builds include `vardrynn-<version>-setup-x64.exe`, a per-user NSIS installer (no admin prompt; choosable folder; desktop and Start menu shortcuts; uninstall keeps game data). It lands in the `build-Windows` CI artifact but not in the S3 release, because it is unsigned: SmartScreen warns on first run (More info → Run anyway). It was cross-built on macOS on 2026-11-06 but not yet installed on Windows.
+- **Windows has not run.** The installer and signing were exercised only by a macOS cross-build (2026-11-06, unsigned) and unit tests. The Azure account is not set up yet, and no install, signed build or in-place update has run on Windows.
 - **Out of phase 5:** the user agent and support links (done in phase 9; the About page keeps upstream attribution and sponsor credit); `appinstaller-builder.ts`, `sign-release.yml`, `deploy-ui.yml`, the Windows `deskgap-app` steps and the disabled `build-arch` job (Windows signing and phase 9).
 
 ## Packaged upgrades on 2026-11-05
