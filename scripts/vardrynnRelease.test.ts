@@ -45,6 +45,10 @@ describe('release manifest', () => {
     expect(classifyPackage('vardrynn-1.2.0-arm64.dmg', '1.2.0')).toEqual({ platform: 'darwin', arch: 'arm64' })
     // electron-builder's real name for the x64 Debian package.
     expect(classifyPackage('vardrynn-1.2.0-amd64.deb', '1.2.0')).toEqual({ platform: 'linux', arch: 'x64' })
+    expect(classifyPackage('vardrynn-1.2.0-setup-x64.exe', '1.2.0')).toEqual({ platform: 'win32', arch: 'x64' })
+    expect(classifyPackage('vardrynn-1.2.0-setup-x64.exe.blockmap', '1.2.0')).toBeUndefined()
+    expect(classifyPackage('vardrynn-1.2.0-x64.exe', '1.2.0')).toBeUndefined()
+    expect(classifyPackage('vardrynn-deskgap-1.2.0-win32-x64.exe', '1.2.0')).toBeUndefined()
     expect(classifyPackage('vardrynn-1.2.0-x64.appx', '1.2.0')).toBeUndefined()
     expect(classifyPackage('vardrynn-1.2.1-arm64.dmg', '1.2.0')).toBeUndefined()
     expect(classifyPackage('vardrynn-1.2.0-arm64.dmg.blockmap', '1.2.0')).toBeUndefined()
