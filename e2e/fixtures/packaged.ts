@@ -35,9 +35,12 @@ const OUTPUT_ROOT = resolve(REPO_ROOT, 'xmcl-electron-app/build/output')
  * runner arch and fall back to whatever exists.
  */
 function findPackagedBinary(): string {
-  const productName = 'XMCL'
+  // Match xmcl-electron-app/build/electron-builder.config.ts: productName is the display
+  // name, and Windows and Linux use the executableName.
+  const productName = 'Vardrynn'
+  const executableName = 'vardrynn'
   if (process.platform === 'win32') {
-    return join(OUTPUT_ROOT, 'win-unpacked', `${productName}.exe`)
+    return join(OUTPUT_ROOT, 'win-unpacked', `${executableName}.exe`)
   }
   if (process.platform === 'darwin') {
     const archDirs = process.arch === 'arm64'
@@ -49,7 +52,7 @@ function findPackagedBinary(): string {
     }
     return join(OUTPUT_ROOT, archDirs[0], `${productName}.app`, 'Contents', 'MacOS', productName)
   }
-  return join(OUTPUT_ROOT, 'linux-unpacked', 'xmcl')
+  return join(OUTPUT_ROOT, 'linux-unpacked', executableName)
 }
 
 export interface PackagedFixture {
