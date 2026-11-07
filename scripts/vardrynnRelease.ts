@@ -15,7 +15,7 @@ export interface PackageFile {
  * Packages that can be handed to the OS installer, named by electron-builder's
  * `vardrynn-${version}-${arch}.${ext}` (`amd64` for x64 debs, `setup-x64.exe` for the Windows
  * installer). Archives are published for manual download but never offered as an update.
- * CI only lets a Windows installer reach this point once it carries a valid Authenticode signature.
+ * The Windows installer may be unsigned; the release signature, not Authenticode, protects updates.
  */
 export function classifyPackage(name: string, version: string) {
   const v = version.replace(/[.+]/g, '\\$&')

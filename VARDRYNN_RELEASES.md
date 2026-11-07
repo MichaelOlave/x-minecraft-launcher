@@ -49,7 +49,7 @@ S3_ENDPOINT=https://s3.olaveapi.com S3_BUCKET=<bucket> AWS_ACCESS_KEY_ID=... AWS
   scripts/vardrynn-publish.sh <packages>
 ```
 
-Only `.dmg` (macOS), `.deb` (Linux) and `-setup-x64.exe` (Windows) are offered as updates. A Windows installer reaches the release only after the `Verify Windows signatures` CI step confirms a valid, timestamped Authenticode signature from `VARDRYNN_PUBLISHER_NAME`; otherwise CI drops it with a warning. Setup: `VARDRYNN_WINDOWS_SIGNING.md`.
+Only `.dmg` (macOS), `.deb` (Linux) and `-setup-x64.exe` (Windows) are offered as updates. The Windows installer is unsigned until Azure Artifact Signing is set up (`VARDRYNN_WINDOWS_SIGNING.md`); the release signature still protects its updates. With signing configured, the `Verify Windows signatures` CI step requires a valid, timestamped Authenticode signature from `VARDRYNN_PUBLISHER_NAME`.
 
 ## Serving a release
 
@@ -85,7 +85,7 @@ These need something this repository cannot supply on its own:
 
 - **Code signing.** macOS builds are ad-hoc signed and not notarized, because there is no Apple Developer ID. They update in place (below), but a first install from a browser download meets Gatekeeper. Windows builds are signed with Azure Artifact Signing once it is set up (`VARDRYNN_WINDOWS_SIGNING.md`).
 - **x64.** Only arm64 was exercised on macOS and Linux.
-- **Windows has not run.** The installer and signing were exercised only by a macOS cross-build (2026-11-06, unsigned) and unit tests. The Azure account is not set up yet, and no install, signed build or in-place update has run on Windows.
+- **Windows has not run.** The installer and signing were exercised only by a macOS cross-build (2026-11-06, unsigned) and unit tests. Windows releases ship unsigned for now (no Azure account), and no install or in-place update has run on Windows.
 - **Out of phase 5:** the user agent and support links (done in phase 9; the About page keeps upstream attribution and sponsor credit); `appinstaller-builder.ts`, `sign-release.yml`, `deploy-ui.yml`, the Windows `deskgap-app` steps and the disabled `build-arch` job (Windows signing and phase 9).
 
 ## Packaged upgrades on 2026-11-05
