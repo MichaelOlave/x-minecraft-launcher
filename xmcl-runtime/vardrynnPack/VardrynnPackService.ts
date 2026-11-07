@@ -75,7 +75,8 @@ export class VardrynnPackService extends AbstractService implements IVardrynnPac
     const manifestService = await this.app.registry.get(InstanceManifestService)
     const manifest = await manifestService.getInstanceManifest({ path: instancePath, hashes: ['sha1'] })
     const selected = new Set(paths)
-    const files = manifest.files.filter((f) => selected.has(f.path) && f.hashes.sha1)
+    // modpack-metadata.json holds the publisher's own export settings.
+    const files = manifest.files.filter((f) => selected.has(f.path) && f.hashes.sha1 && f.path !== 'modpack-metadata.json')
     const preview = previewPackFiles(files, await this.restrictedCurseforgeFiles(files))
     return { manifest, files, preview }
   }

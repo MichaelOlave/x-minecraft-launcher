@@ -105,7 +105,7 @@
             data-testid="vardrynn-pack-publish"
             variant="tonal"
             prepend-icon="cloud_upload"
-            :disabled="!canPublishVardrynn"
+            :disabled="!canPublishVardrynn || loading"
             @click="modrinthContext.openVardrynnPublishDialog"
           >
             {{ t('vardrynnPack.publish') }}
@@ -137,7 +137,8 @@ const { gameProfile } = injection(kUserContext)
 const { t } = useI18n()
 
 const { modpackMetadata } = inject('modpackMetadata', useInstanceModpackMetadata())
-const { exportModpack, modrinthContext } = injection(kModpackExport)
+// `loading` is true while the file list is refreshing; the dialog publishes the selected files.
+const { exportModpack, modrinthContext, loading } = injection(kModpackExport)
 const { account } = injection(kXmclAccount)
 const flights = inject(kFlights, {})
 const vardrynnConfigured = computed(() => !!flights[VARDRYNN_API_ORIGIN_FLIGHT])

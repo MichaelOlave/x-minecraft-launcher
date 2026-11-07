@@ -907,8 +907,17 @@ migrateMinecraft:
   name: Migrate Minecraft Files
 vardrynnPack:
   description: Description
+  error:
+    forbidden: Your Vardrynn account is not allowed to publish packs, or this pack ID belongs to someone else.
+    invalidManifest: "The service rejected the pack: {detail}"
+    signedOut: Your Vardrynn session has ended. Sign in again in Settings.
+    storage: The Vardrynn service cannot store packs right now. Try again later.
+    tooLarge: A file is over 50 MB and cannot be uploaded.
+    unsupported: The Vardrynn service does not support packs yet.
+    versionExists: This version is already published. Choose a new version number.
   existing: "This pack is already published. Its latest version is {version}."
-  flaggedFiles: "{count} files need attention"
+  flaggedFiles: "Files that need attention: {count}"
+  noFiles: No files are selected. Choose the files to include under Files to include.
   packTitle: Pack name
   publish: Publish to Vardrynn
   publishTitle: Publish Vardrynn pack

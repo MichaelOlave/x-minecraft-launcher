@@ -6,7 +6,8 @@
         {{ t('vardrynnPack.publishTitle') }}
       </v-card-title>
       <v-card-text class="pack-form">
-        <v-skeleton-loader v-if="previewLoading" type="text" />
+        <v-alert v-if="!parameter?.files.length" type="warning" variant="tonal" density="compact">{{ t('vardrynnPack.noFiles') }}</v-alert>
+        <v-skeleton-loader v-else-if="previewLoading" type="text" />
         <v-alert v-else-if="previewError" type="error" variant="tonal" density="compact">{{ previewError }}</v-alert>
         <v-alert v-else-if="preview" :type="preview.blocked ? 'error' : 'info'" variant="tonal" density="compact">
           <div class="flex flex-wrap gap-2">
@@ -122,24 +123,32 @@ const sourceCounts = computed(() => SOURCES
   .filter((entry) => entry.count > 0))
 const flagged = computed(() => preview.value?.files.filter((f) => f.warning) ?? [])
 
+// Service and runtime error codes with their own message; others are shown as they are.
+const ERRORS: Record<string, string> = {
+  not_found: 'unsupported',
+  method_not_allowed: 'unsupported',
+  forbidden: 'forbidden',
+  unauthorized: 'signedOut',
+  xmcl_account_session_missing: 'signedOut',
+  version_exists: 'versionExists',
+  invalid_manifest: 'invalidManifest',
+  packs_unconfigured: 'storage',
+  pack_storage_unavailable: 'storage',
+  vardrynn_pack_file_too_large: 'tooLarge',
+}
+
+function describeError(caught: unknown) {
+  const message = getErrorMessage(caught)
+  const separator = message.indexOf(': ')
+  const code = separator === -1 ? message : message.slice(0, separator)
+  const detail = separator === -1 ? '' : message.slice(separator + 2)
+  const key = ERRORS[code]
+  return key ? t(`vardrynnPack.error.${key}`, { detail }) : message
+}
+
 function formatSize(bytes: number) {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`
 }
-
-watch(parameter, (options) => {
-  if (!options) return
-  slug.value = getRememberedPackSlug(options.instancePath) ?? toPackSlug(options.name)
-  version.value = options.currentVersion
-  title.value = options.name.slice(0, 100)
-  summary.value = options.description.slice(0, 300)
-  description.value = ''
-  changelog.value = ''
-  existing.value = undefined
-  result.value = undefined
-  error.value = ''
-  loadPreview(options.instancePath, options.files)
-  loadExisting()
-}, { immediate: true })
 
 let previewRequest = 0
 async function loadPreview(instancePath: string, files: string[]) {
@@ -151,7 +160,7 @@ async function loadPreview(instancePath: string, files: string[]) {
     const value = await previewVardrynnPack(instancePath, files)
     if (request === previewRequest) preview.value = value
   } catch (caught) {
-    if (request === previewRequest) previewError.value = getErrorMessage(caught)
+    if (request === previewRequest) previewError.value = describeError(caught)
   } finally {
     if (request === previewRequest) previewLoading.value = false
   }
@@ -173,6 +182,22 @@ async function loadExisting() {
   if (latest && version.value === latest) version.value = inc(latest, 'patch') ?? version.value
 }
 
+// Runs immediately, so it must follow the request counters above.
+watch(parameter, (options) => {
+  if (!options) return
+  slug.value = getRememberedPackSlug(options.instancePath) ?? toPackSlug(options.name)
+  version.value = options.currentVersion
+  title.value = options.name.slice(0, 100)
+  summary.value = options.description.slice(0, 300)
+  description.value = ''
+  changelog.value = ''
+  existing.value = undefined
+  result.value = undefined
+  error.value = ''
+  loadPreview(options.instancePath, options.files)
+  loadExisting()
+}, { immediate: true })
+
 async function publish() {
   const options = parameter.value
   if (!options || !valid.value) return
@@ -191,7 +216,7 @@ async function publish() {
     })
     rememberPackSlug(options.instancePath, slug.value)
   } catch (caught) {
-    error.value = getErrorMessage(caught)
+    error.value = describeError(caught)
   } finally {
     publishing.value = false
   }
@@ -200,6 +225,8 @@ async function publish() {
 
 <style scoped>
 .pack-form { display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; }
+/* The card body scrolls; its children keep their height. */
+.pack-form > * { flex-shrink: 0; }
 .pack-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; }
 .file-entry { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; font-size: 12px; min-width: 0; }
 @media (max-width: 640px) { .pack-grid { grid-template-columns: minmax(0, 1fr); } }
