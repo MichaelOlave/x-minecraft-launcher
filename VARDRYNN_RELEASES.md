@@ -82,7 +82,7 @@ These need something this repository cannot supply on its own:
 - **The CI job has not run.** This branch is not on GitHub yet (`origin/master` is still the upstream history), so the `release` job needs the work merged to `master`, then a `chore(release)` commit or a manual `publish: dev` run. Its publish script and every step it runs were exercised by hand (below).
 - **No production release is published.** It waits on the first CI run, and on `VARDRYNN_API_BASE_URL` being set; until then, production builds cannot check for updates.
 - **Code signing.** macOS builds are ad-hoc signed and not notarized, because there is no Apple Developer ID. They update in place (below), but a first install from a browser download meets Gatekeeper. Windows builds are signed with Azure Artifact Signing once it is set up (`VARDRYNN_WINDOWS_SIGNING.md`).
-- **Windows and x64.** Only arm64 was exercised on macOS and Linux. Windows has no update path.
+- **x64.** Only arm64 was exercised on macOS and Linux.
 - **Windows has not run.** The installer and signing were exercised only by a macOS cross-build (2026-11-06, unsigned) and unit tests. The Azure account is not set up yet, and no install, signed build or in-place update has run on Windows.
 - **Out of phase 5:** the user agent and support links (done in phase 9; the About page keeps upstream attribution and sponsor credit); `appinstaller-builder.ts`, `sign-release.yml`, `deploy-ui.yml`, the Windows `deskgap-app` steps and the disabled `build-arch` job (Windows signing and phase 9).
 
