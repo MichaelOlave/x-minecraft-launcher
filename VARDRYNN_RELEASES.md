@@ -82,6 +82,7 @@ These need something this repository cannot supply on its own:
 - **No production release is published.** It waits on the first CI run, and on `VARDRYNN_API_BASE_URL` being set; until then, production builds cannot check for updates.
 - **Code signing.** macOS builds are ad-hoc signed and not notarized, because there is no Apple Developer ID. They update in place (below), but a first install from a browser download meets Gatekeeper. Windows updates stay excluded until Authenticode signing exists.
 - **Windows and x64.** Only arm64 was exercised on macOS and Linux. Windows has no update path.
+- **Windows installer.** Windows builds include `vardrynn-<version>-setup-x64.exe`, a per-user NSIS installer (no admin prompt; choosable folder; desktop and Start menu shortcuts; uninstall keeps game data). It lands in the `build-Windows` CI artifact but not in the S3 release, because it is unsigned: SmartScreen warns on first run (More info → Run anyway). It was cross-built on macOS on 2026-11-06 but not yet installed on Windows.
 - **Out of phase 5:** the user agent and support links (done in phase 9; the About page keeps upstream attribution and sponsor credit); `appinstaller-builder.ts`, `sign-release.yml`, `deploy-ui.yml`, the Windows `deskgap-app` steps and the disabled `build-arch` job (Windows signing and phase 9).
 
 ## Packaged upgrades on 2026-11-05

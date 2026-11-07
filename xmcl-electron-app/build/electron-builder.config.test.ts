@@ -45,3 +45,15 @@ describe('Linux system packaging', () => {
     expect(profile).toContain('userns,')
   })
 })
+
+describe('Windows packaging', () => {
+  it('builds a per-user NSIS installer next to the zip', () => {
+    expect(config.win.target).toContainEqual({ target: 'nsis', arch: ['x64'] })
+    expect(config.nsis).toMatchObject({
+      artifactName: 'vardrynn-${version}-setup-${arch}.${ext}',
+      oneClick: false,
+      perMachine: false,
+      deleteAppDataOnUninstall: false,
+    })
+  })
+})

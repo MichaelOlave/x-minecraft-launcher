@@ -54,6 +54,20 @@ export const config = {
     publisherDisplayName: LAUNCHER_DISPLAY_NAME,
     setBuildNumber: true,
   },
+  // Per-user installer, so installing and updating never needs an admin prompt.
+  nsis: {
+    artifactName: 'vardrynn-${version}-setup-${arch}.${ext}',
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    installerIcon: 'icons/vardrynn.ico',
+    uninstallerIcon: 'icons/vardrynn.ico',
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    shortcutName: LAUNCHER_DISPLAY_NAME,
+    // Instances, worlds and accounts live in the user's data folder and must survive an uninstall.
+    deleteAppDataOnUninstall: false,
+  },
   dmg: {
     artifactName: 'vardrynn-${version}-${arch}.${ext}',
     contents: [
@@ -96,6 +110,10 @@ export const config = {
     icon: 'icons/vardrynn.ico',
     electronLanguages: ['en-US'],
     target: [
+      {
+        target: 'nsis',
+        arch: ['x64'],
+      },
       {
         target: 'zip',
         arch: [
