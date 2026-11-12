@@ -1,4 +1,5 @@
 export * from './types'
+export * from './exitCodes'
 export * from './registry'
 export * from './marketRef'
 export * from './cli'

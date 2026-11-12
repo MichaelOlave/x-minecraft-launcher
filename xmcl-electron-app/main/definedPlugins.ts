@@ -12,6 +12,7 @@ import { pluginAgentProtocol } from '@xmcl/runtime/agent'
 import { pluginCommonProtocol } from '@xmcl/runtime/app/pluginCommonProtocol'
 import { pluginMediaProtocol } from '@xmcl/runtime/app/pluginMediaProtocol'
 import { pluginCli } from '@xmcl/runtime/commands/pluginCli'
+import { pluginCliServer } from '@xmcl/runtime/commands/pluginCliServer'
 import { pluginCommandHost } from '@xmcl/runtime/commands/pluginCommandHost'
 import { pluginExternalCredentialLifecycle } from '@xmcl/runtime/credential/pluginExternalCredentialLifecycle'
 import { elyByPlugin } from '@xmcl/runtime/elyby/elyByPlugin'
@@ -57,6 +58,7 @@ export const definedPlugins: LauncherAppPlugin[] = [
   pluginAgentProtocol,
   pluginCommandHost({ services: definedServices }),
   pluginCli,
+  pluginCliServer,
   pluginAutoUpdate,
   pluginPowerMonitor,
   pluginIconProtocol,
