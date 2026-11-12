@@ -345,6 +345,7 @@ export const runTestScenario: ClientCommand = async (ctx: ClientCommandContext) 
       user: input.user ?? settings.user,
       world: settings.world,
       vmOption: settings.vmOptions ?? [],
+      replaceVmOptions: settings.replaceVmOptions ?? false,
       mcOption: settings.mcOptions ?? [],
       env: Object.entries(settings.env ?? {}).map(([k, v]) => `${k}=${v}`),
       minMemory: settings.minMemory,

@@ -80,6 +80,7 @@ describe('LaunchInstanceInputSchema', () => {
       modCount: 0,
       dry: false,
       vmOption: [],
+      replaceVmOptions: false,
       mcOption: [],
       env: [],
       wait: false,
@@ -279,6 +280,15 @@ describe('applyRunOverrides', () => {
       maxMemory: 16384,
       resolution: { fullscreen: false, width: 1280, height: 720 },
     })
+  })
+
+  test('can replace the instance JVM options for one launch', () => {
+    const options: any = { vmOptions: ['-XX:+UseZGC', '-XX:+ZGenerational'] }
+    applyRunOverrides(options, LaunchInstanceInputSchema.parse({ instance: '/i', vmOption: ['-Dveil.debug=true'], replaceVmOptions: true }))
+    expect(options.vmOptions).toEqual(['-Dveil.debug=true'])
+    const empty: any = { vmOptions: ['-XX:+UseZGC'] }
+    applyRunOverrides(empty, LaunchInstanceInputSchema.parse({ instance: '/i', replaceVmOptions: true }))
+    expect(empty.vmOptions).toEqual([])
   })
 
   test('leaves options untouched when nothing is given', () => {

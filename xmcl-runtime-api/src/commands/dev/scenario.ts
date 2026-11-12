@@ -46,6 +46,8 @@ export const TestScenarioSchema = z.object({
     user: z.string().min(1).optional(),
     world: z.string().min(1).optional(),
     vmOptions: z.array(z.string().min(1)).optional(),
+    /** Use only `vmOptions`, not the instance's own JVM options. */
+    replaceVmOptions: z.boolean().optional(),
     mcOptions: z.array(z.string().min(1)).optional(),
     env: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).optional(),
     minMemory: z.number().int().positive().optional(),

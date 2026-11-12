@@ -59,6 +59,11 @@ export const LaunchInstanceInputSchema = z.object({
   world: z.string().min(1).optional(),
   /** Extra JVM options for this launch, appended after the instance's own. */
   vmOption: z.array(z.string().min(1)).default([]),
+  /**
+   * Use only `vmOption` for this launch, dropping the instance's and the
+   * global JVM options (for example a garbage collector choice).
+   */
+  replaceVmOptions: z.boolean().default(false),
   /** Extra Minecraft arguments for this launch, appended after the instance's own. */
   mcOption: z.array(z.string().min(1)).default([]),
   /** Extra environment variables for this launch, as `NAME=value`. */
@@ -126,6 +131,7 @@ export const launchInstanceCommand = defineCommand({
       modCount: { type: 'number', description: 'Override mod count for auto-memory assignment' },
       world: { description: 'Open this singleplayer world on start' },
       vmOption: { multiple: true, description: 'Extra JVM option for this launch' },
+      replaceVmOptions: { type: 'boolean', description: 'Use only the --vm-option values, not the instance\'s JVM options' },
       mcOption: { multiple: true, description: 'Extra Minecraft argument for this launch' },
       env: { multiple: true, description: 'Extra environment variable NAME=value' },
       minMemory: { type: 'number', description: 'Minimum heap in MB' },
@@ -271,9 +277,10 @@ export const launchInstanceCommand = defineCommand({
  * Apply the per-launch settings on top of the instance's resolved options.
  * Nothing here is written back to the instance.
  */
-export function applyRunOverrides(options: LaunchOptions, input: Pick<LaunchInstanceInput, 'world' | 'vmOption' | 'mcOption' | 'env' | 'minMemory' | 'maxMemory' | 'resolution'>) {
+export function applyRunOverrides(options: LaunchOptions, input: Pick<LaunchInstanceInput, 'world' | 'vmOption' | 'replaceVmOptions' | 'mcOption' | 'env' | 'minMemory' | 'maxMemory' | 'resolution'>) {
   if (input.world) options.world = input.world
-  if (input.vmOption.length) options.vmOptions = [...(options.vmOptions ?? []), ...input.vmOption]
+  if (input.replaceVmOptions) options.vmOptions = [...input.vmOption]
+  else if (input.vmOption.length) options.vmOptions = [...(options.vmOptions ?? []), ...input.vmOption]
   if (input.mcOption.length) options.mcOptions = [...(options.mcOptions ?? []), ...input.mcOption]
   if (input.env.length) {
     const env = { ...options.env }

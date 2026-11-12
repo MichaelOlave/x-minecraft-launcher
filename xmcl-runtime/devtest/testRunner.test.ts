@@ -221,13 +221,13 @@ describe('runTestScenario', () => {
   const writeResult = (result: string) => [node, '-e', `require('fs').writeFileSync(process.env.VARDRYNN_RESULT, JSON.stringify({ result: '${result}', checks: [{ name: 'preview on', result: '${result}' }] })); console.log('pid', process.env.VARDRYNN_PID)`]
 
   test('passes when the harness passes and the game exits cleanly', async () => {
-    const pack = await setupPack({ harness: { command: writeResult('PASS') }, launch: { world: 'Veil Development', vmOptions: ['-Dveil.debug=true'] } })
+    const pack = await setupPack({ harness: { command: writeResult('PASS') }, launch: { world: 'Veil Development', vmOptions: ['-Dveil.debug=true'], replaceVmOptions: true } })
     const r = await run(pack, { behaviour: 'pass' })
     expect(r.code).toBe(0)
     expect(r.record()).toMatchObject({ outcome: 'passed', exitCode: 0, harness: { result: 'PASS', source: 'result-file' }, launch: { launchId: 'L1', pid: 4242, startupMs: 1500 } })
     expect(r.record().phases.map((p) => [p.name, p.status])).toEqual([['setup', 'passed'], ['start', 'passed'], ['ready', 'passed'], ['test', 'passed'], ['exit', 'passed']])
     const launchCall = r.calls.find((c) => c.command === 'instance.launch')!.input
-    expect(launchCall).toMatchObject({ world: 'Veil Development', vmOption: ['-Dveil.debug=true'], wait: true, stopOnCancel: true, readyTimeout: 600 })
+    expect(launchCall).toMatchObject({ world: 'Veil Development', vmOption: ['-Dveil.debug=true'], replaceVmOptions: true, wait: true, stopOnCancel: true, readyTimeout: 600 })
     expect(r.text).toContain('[harness] pid 4242')
     expect(r.text).toContain('PASSED')
     expect(await readFile(join(r.runDir, 'harness.log'), 'utf8')).toContain('pid 4242')
