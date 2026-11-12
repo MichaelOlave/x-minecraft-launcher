@@ -17,6 +17,7 @@ export type CommandCategory =
   | 'save'
   | 'system'
   | 'ui'
+  | 'dev'
 
 /**
  * A reference to a remote or local resource used by install commands.
