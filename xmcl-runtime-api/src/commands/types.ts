@@ -175,6 +175,13 @@ export interface CommandContext {
    * from one. Services resolve relative paths in the input against it.
    */
   readonly cwd?: string
+
+  /**
+   * Listen to a service event for the life of a command. Returns the
+   * function that stops listening. Hosts that cannot forward service events
+   * leave it out, so handlers must check for it.
+   */
+  subscribe?<T>(key: ServiceKey<T>, event: string, listener: (payload: any) => void): Promise<() => void>
 }
 
 /**
@@ -197,6 +204,11 @@ export interface CommandCliFlag {
    * string captured from argv and returns the value passed to the schema.
    */
   parse?: (value: string) => unknown
+  /**
+   * The flag may be given more than once. Its values (after `parse`) are
+   * collected into an array in the order given.
+   */
+  multiple?: boolean
 }
 
 /**

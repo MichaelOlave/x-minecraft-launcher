@@ -152,9 +152,14 @@ export function parseCli(argv: ReadonlyArray<string>, registry: CommandRegistry)
   let positionalIdx = 0
 
   const setFlagValue = (name: string, raw: string, decl: CommandCliFlag | undefined) => {
-    if (decl?.parse) input[name] = decl.parse(raw)
-    else if (decl?.type === 'number') input[name] = Number(raw)
-    else input[name] = raw
+    const value = decl?.parse ? decl.parse(raw) : decl?.type === 'number' ? Number(raw) : raw
+    if (decl?.multiple) {
+      const list = Array.isArray(input[name]) ? input[name] as unknown[] : []
+      list.push(value)
+      input[name] = list
+    } else {
+      input[name] = value
+    }
   }
 
   for (let i = 0; i < tail.length; i++) {
@@ -294,7 +299,8 @@ export function formatCommandHelp(cmd: AnyCommand, opts: { programName?: string 
       if (!decl) continue
       const aliasPart = decl.alias ? `-${decl.alias}, ` : '    '
       const valuePart = decl.type === 'boolean' ? '' : ' <value>'
-      lines.push(`  ${aliasPart}--${camelToKebab(field)}${valuePart}`.padEnd(34) + (decl.description ?? ''))
+      const repeat = decl.multiple ? ' (repeatable)' : ''
+      lines.push(`  ${aliasPart}--${camelToKebab(field)}${valuePart}`.padEnd(34) + (decl.description ?? '') + repeat)
     }
   }
   return lines.join('\n')

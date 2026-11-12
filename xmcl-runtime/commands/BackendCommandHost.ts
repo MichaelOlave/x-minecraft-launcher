@@ -151,6 +151,11 @@ export class BackendCommandHost {
       signal,
       out,
       cwd: opts.cwd,
+      async subscribe(key, event, listener) {
+        const service = await host.resolveService(key as ServiceKey<any>)
+        service.on(event, listener)
+        return () => { service.off(event, listener) }
+      },
       async call(key, method, ...args) {
         const service = await host.resolveService(key as ServiceKey<any>)
         const fn = (service as any)[method]
