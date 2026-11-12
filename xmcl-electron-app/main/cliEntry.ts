@@ -74,6 +74,9 @@ export async function runCliEntry(parsed: ParsedCli, clientCommands: Record<stri
     process.stderr.write(`${(e as Error)?.stack ?? e}\n`)
     code = CliExitCode.Failure
   }
+  // Exiting before Electron finishes starting orphans its helper processes,
+  // which then print errors to this terminal.
+  await app.whenReady()
   // Let buffered output reach a pipe before the process ends.
   await Promise.all([
     new Promise((resolve) => process.stdout.write('', resolve)),

@@ -87,14 +87,26 @@ export function parseCli(argv: ReadonlyArray<string>, registry: CommandRegistry)
 
   // First pass: locate the command and harvest globals that appear before/after it.
   // We do not parse command-specific flags here.
+  const maxNameWords = Math.max(1, ...[...commandIndex.keys()].map((name) => name.split(' ').length))
+
   for (let i = 0; i < argv.length; i++) {
     const tok = argv[i]
     if (!cmd) {
-      if (commandIndex.has(tok)) {
-        cmd = commandIndex.get(tok)!
-        cmdNameTokenIndex = i
-        continue
+      // Multi-word names (`instance list`) may arrive as separate arguments
+      // or quoted as one. Prefer the longest name that matches here.
+      let matched = false
+      for (let words = Math.min(maxNameWords, argv.length - i); words >= 1; words--) {
+        const name = argv.slice(i, i + words).join(' ')
+        const found = commandIndex.get(name)
+        if (found) {
+          cmd = found
+          cmdNameTokenIndex = i + words - 1
+          i += words - 1
+          matched = true
+          break
+        }
       }
+      if (matched) continue
     }
     // Global flags handling — recognise on either side of the command.
     if (tok === '--help' || tok === '-h') {

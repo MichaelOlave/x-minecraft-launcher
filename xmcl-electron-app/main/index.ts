@@ -37,6 +37,8 @@ if (process.env.XMCL_E2E) {
 // A terminal command talks to the launcher that is already open (or starts
 // one) and exits; it never becomes the launcher itself.
 const cliInvocation = process.env.ELECTRON_RUN_AS_NODE ? undefined : detectCliInvocation(process.argv)
+/** True when this process only relays a terminal command; development hooks must stay quiet. */
+export const isCliProcess = !!cliInvocation
 if (cliInvocation) {
   void runCliEntry(cliInvocation)
 } else {

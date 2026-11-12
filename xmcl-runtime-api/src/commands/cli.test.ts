@@ -160,6 +160,20 @@ describe('parseCli — positionals + flags', () => {
     expect(r).toMatchObject({ kind: 'error', message: 'Unknown flag --game-version' })
   })
 
+  test('multi-word command name given as separate arguments', () => {
+    const r = parseCli(['/Applications/Vardrynn.app/Contents/MacOS/Vardrynn', 'user', 'list', '--json'], makeRegistry())
+    expect(r.kind).toBe('command')
+    if (r.kind === 'command') {
+      expect(r.commandId).toBe('user.list')
+      expect(r.globals.json).toBe(true)
+    }
+  })
+
+  test('a word that only starts a multi-word name is not a command', () => {
+    const r = parseCli(['xmcl', 'user'], makeRegistry())
+    expect(r.kind).toBe('none')
+  })
+
   test('multi-word command name (user list)', () => {
     // For now `user list` would require separate matching logic; verify
     // single-word fallback continues to work.
