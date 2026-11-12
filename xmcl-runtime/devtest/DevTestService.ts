@@ -7,13 +7,15 @@ import {
   type StageDevInstanceResult,
 } from '@xmcl/runtime-api'
 import { readdir } from 'fs/promises'
-import { basename, resolve } from 'path'
+import { basename, join, resolve } from 'path'
 import { Inject, LauncherAppKey, kGameDataPath, type PathResolver } from '~/app'
 import { LauncherApp } from '~/app/LauncherApp'
 import { InstanceService } from '~/instance'
 import { LaunchService } from '~/launch'
 import { AbstractService, ExposeServiceKey } from '~/service'
 import { HashCache } from './fileHash'
+import { applyLocalMods, describePlan, readInstanceIdentities, readLocalMods } from './localMods'
+import { LocalModPlan, ModIdentity, ModIdentityCache, planLocalMods } from './modIds'
 import { DEFAULT_COPY_ONCE, DevMarker, readMarker, stageError, stageFiles, verifySource, writeMarker } from './stage'
 
 /** Instance settings a disposable copy inherits so it launches like the working instance. */
@@ -22,6 +24,7 @@ const INHERITED_SETTINGS = ['version', 'java', 'assignMemory', 'minMemory', 'max
 @ExposeServiceKey(DevTestServiceKey)
 export class DevTestService extends AbstractService implements IDevTestService {
   readonly #hashes = new HashCache()
+  readonly #identities: ModIdentityCache
 
   constructor(
     @Inject(LauncherAppKey) app: LauncherApp,
@@ -30,6 +33,7 @@ export class DevTestService extends AbstractService implements IDevTestService {
     @Inject(kGameDataPath) private getPath: PathResolver,
   ) {
     super(app)
+    this.#identities = new ModIdentityCache(this.getAppDataPath('dev-cache', 'mod-ids.json'))
   }
 
   /** Find an instance by path (absolute or relative to `cwd`) or by name. */
@@ -79,6 +83,38 @@ export class DevTestService extends AbstractService implements IDevTestService {
     }
     const verified = await verifySource(input)
 
+    // Plan local builds against the mods this stage will put in place, before changing anything.
+    let plan: LocalModPlan | undefined
+    let identities = new Map<string, ModIdentity>()
+    const baseFiles = new Map([...verified.mods].map(([file, sha256]) => [file, { path: join(source.path, 'mods', file), sha256 }]))
+    if (options.mods?.length) {
+      const requests = await readLocalMods(options.mods.map((m) => ({ ...m, path: at(m.path) })), this.#hashes, this.#identities)
+      identities = await readInstanceIdentities(baseFiles, this.#identities, (done, total) => {
+        input.progress('mod-ids', done, total, done === total ? 'Read mod IDs' : undefined)
+      })
+      await this.#identities.save().catch((e) => this.warn(e))
+      plan = planLocalMods(identities, requests)
+    }
+    const localMods = plan ? describePlan(plan, baseFiles, identities) : []
+    const warnings = (plan?.existingDuplicates ?? []).map((d) => `Mod ID ${d.modId} is declared by ${d.files.join(' and ')} (already so in the working instance)`)
+
+    if (options.dryRun) {
+      return {
+        instancePath: target?.path ?? '',
+        name: options.name,
+        created: false,
+        sourcePath: source.path,
+        lock: verified.lock,
+        mods: { total: verified.mods.size, copied: 0, removed: [], excluded: verified.excluded },
+        copied: [],
+        overlays: [],
+        localMods,
+        warnings,
+        dryRun: true,
+        durationMs: Date.now() - startedAt,
+      }
+    }
+
     let created = false
     let marker: DevMarker
     if (!target) {
@@ -111,6 +147,7 @@ export class DevTestService extends AbstractService implements IDevTestService {
 
     const allowedLinks = new Map(['libraries', 'versions'].map((name) => [resolve(target!.path, name), this.getPath(name)]))
     const files = await stageFiles({ ...input, targetPath: target.path, allowedLinks }, verified, marker)
+    if (plan) await applyLocalMods(target.path, marker, plan)
     marker.source = source.path
     marker.stagedAt = Date.now()
     await writeMarker(target.path, marker)
@@ -123,6 +160,9 @@ export class DevTestService extends AbstractService implements IDevTestService {
       sourcePath: source.path,
       lock: verified.lock,
       ...files,
+      localMods,
+      warnings,
+      dryRun: false,
       durationMs: Date.now() - startedAt,
     }
   }

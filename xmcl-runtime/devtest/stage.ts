@@ -24,6 +24,8 @@ export interface DevMarker {
   stagedAt?: number
   /** Mods staged from the working instance, by file name. */
   mods: Record<string, StagedFile>
+  /** Local builds installed by the last stage, by file name, with the instance mods they replaced. */
+  localMods?: Record<string, { sha256: string; source: string; replaced: string[] }>
 }
 
 export function stageError(name: string, message: string) {
@@ -230,6 +232,13 @@ export async function stageFiles(input: StageInput, verified: VerifiedSource, ma
 
   const modsDir = join(targetPath, 'mods')
   await mkdir(modsDir, { recursive: true })
+  // Start from the pack's own mods: take out local builds from the last stage.
+  // Any mod they replaced is missing now and gets copied back below.
+  for (const file of Object.keys(marker.localMods ?? {})) {
+    await rm(join(modsDir, file), { force: true })
+    if (marker.mods[file]) marker.mods[file] = { ...marker.mods[file], mtimeMs: -1 }
+  }
+  marker.localMods = {}
   const present = await listJars(modsDir)
   const unknown = present.filter((name) => !marker.mods[name])
   if (unknown.length) {

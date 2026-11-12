@@ -34,6 +34,40 @@ export interface DevWorldFixture {
   reset?: boolean
 }
 
+/** A locally built mod to test in the disposable instance. */
+export interface LocalModInput {
+  /**
+   * The built mod file. Its file name may contain `*` for a versioned build
+   * (`build/libs/pockets-*.jar`); it must then match exactly one file,
+   * not counting `-sources` and `-javadoc` jars.
+   */
+  path: string
+  /**
+   * Install it even when no mod in the instance has its mod ID. Without
+   * this, a build whose ID matches nothing is an error, to catch typos.
+   */
+  add?: boolean
+  /** The build must declare this mod ID. */
+  modId?: string
+  /** Expected SHA-256 of the file. */
+  sha256?: string
+  /** Expected SHA-512 of the file. */
+  sha512?: string
+}
+
+/** A local build installed in the disposable instance, and what it replaced. */
+export interface LocalModChange {
+  action: 'replaced' | 'added'
+  /** File name in mods/. */
+  file: string
+  /** Where the build came from. */
+  source: string
+  sha256: string
+  modIds: string[]
+  version?: string
+  replaced: Array<{ file: string; sha256: string; modIds: string[]; version?: string }>
+}
+
 export interface StageDevInstanceOptions {
   /** The working instance to copy, by path or name. It is only read. */
   source: string
@@ -54,6 +88,14 @@ export interface StageDevInstanceOptions {
   fresh?: boolean
   overlays?: DevOverlay[]
   world?: DevWorldFixture
+  /**
+   * Local builds to install, matched to instance mods by mod ID. Builds
+   * installed by an earlier stage are removed first and the pack's own
+   * files restored, so a stage always yields the lock plus these builds.
+   */
+  mods?: LocalModInput[]
+  /** Check and plan everything, but change nothing. */
+  dryRun?: boolean
   /** Folder that relative paths in these options are resolved against. */
   cwd?: string
 }
@@ -87,6 +129,12 @@ export interface StageDevInstanceResult {
   copied: string[]
   overlays: DevFileChange[]
   world?: { name: string; path: string; copied: boolean }
+  /** Local builds installed (or, in a dry run, that would be). */
+  localMods: LocalModChange[]
+  /** Problems that did not stop the stage, such as duplicate mod IDs already in the pack. */
+  warnings: string[]
+  /** Nothing was changed. */
+  dryRun: boolean
   durationMs: number
 }
 
