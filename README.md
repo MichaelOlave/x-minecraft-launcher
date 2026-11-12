@@ -18,6 +18,7 @@ Vardrynn is a Minecraft launcher built on [X Minecraft Launcher (XMCL)](https://
 - **Issues and support:** [open an issue](https://github.com/MichaelOlave/x-minecraft-launcher/issues).
 - **Downloads:** no public package exists yet. Build from source ([Contributing](./CONTRIBUTING.md)); release process in [VARDRYNN_RELEASES.md](./VARDRYNN_RELEASES.md).
 - **What contacts the network, and why:** [VARDRYNN_NETWORK_DESTINATIONS.md](./VARDRYNN_NETWORK_DESTINATIONS.md).
+- **Testing a pack from the terminal** (disposable instances, local mod builds, named test runs, diagnostics): [VARDRYNN_DEV_TESTING.md](./VARDRYNN_DEV_TESTING.md).
 - **Not affiliated with Mojang or Microsoft.** Not an official Minecraft product.
 
 <kbd>[<img title="Ukraine" alt="Ukraine" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Ukraine.svg/1280px-Flag_of_Ukraine.svg.png" width="22">](i18n/README.uk.md)</kbd>

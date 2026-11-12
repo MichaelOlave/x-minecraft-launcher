@@ -5,6 +5,10 @@ require('graceful-fs').gracefulify(require('fs'))
 import { app } from 'electron'
 // eslint-disable-next-line import/first
 import ElectronLauncherApp from './ElectronLauncherApp'
+// eslint-disable-next-line import/first
+import { detectCliInvocation, runCliEntry } from './cliEntry'
+// eslint-disable-next-line import/first
+import { runTestScenario } from '@xmcl/runtime/devtest/testRunner'
 
 // Disable sandbox for AppImage to avoid chrome-sandbox permission issues
 // AppImage mounts to /tmp which cannot have proper setuid permissions
@@ -32,4 +36,13 @@ if (process.env.XMCL_E2E) {
   })
 }
 
-new ElectronLauncherApp().start()
+// A terminal command talks to the launcher that is already open (or starts
+// one) and exits; it never becomes the launcher itself.
+const cliInvocation = process.env.ELECTRON_RUN_AS_NODE ? undefined : detectCliInvocation(process.argv)
+/** True when this process only relays a terminal command; development hooks must stay quiet. */
+export const isCliProcess = !!cliInvocation
+if (cliInvocation) {
+  void runCliEntry(cliInvocation, { 'test.run': runTestScenario })
+} else {
+  new ElectronLauncherApp().start()
+}

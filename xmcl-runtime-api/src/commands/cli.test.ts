@@ -160,6 +160,20 @@ describe('parseCli — positionals + flags', () => {
     expect(r).toMatchObject({ kind: 'error', message: 'Unknown flag --game-version' })
   })
 
+  test('multi-word command name given as separate arguments', () => {
+    const r = parseCli(['/Applications/Vardrynn.app/Contents/MacOS/Vardrynn', 'user', 'list', '--json'], makeRegistry())
+    expect(r.kind).toBe('command')
+    if (r.kind === 'command') {
+      expect(r.commandId).toBe('user.list')
+      expect(r.globals.json).toBe(true)
+    }
+  })
+
+  test('a word that only starts a multi-word name is not a command', () => {
+    const r = parseCli(['xmcl', 'user'], makeRegistry())
+    expect(r.kind).toBe('none')
+  })
+
   test('multi-word command name (user list)', () => {
     // For now `user list` would require separate matching logic; verify
     // single-word fallback continues to work.
@@ -183,5 +197,42 @@ describe('formatHelp / formatCommandHelp', () => {
     expect(txt).toContain('--user')
     expect(txt).toContain('--mod-count')
     expect(txt).toContain('--dry')
+  })
+})
+
+describe('parseCli — repeatable flags', () => {
+  function makeRepeatRegistry() {
+    const reg = new CommandRegistry()
+    reg.register(defineCommand({
+      id: 'test.repeat',
+      title: 'Repeat',
+      category: 'system',
+      input: z.object({ vmOption: z.array(z.string()).default([]), size: z.array(z.number()).default([]), name: z.string().optional() }),
+      cli: {
+        name: 'repeat',
+        flags: {
+          vmOption: { multiple: true, description: 'JVM option' },
+          size: { multiple: true, type: 'number' },
+          name: {},
+        },
+      },
+      async handler() { return undefined },
+    }))
+    return reg
+  }
+
+  test('collects every occurrence in order, including inline values', () => {
+    const r = parseCli(['vardrynn', 'repeat', '--vm-option', '-Da=1', '--vm-option=-Db=2', '--size', '3', '--size', '4'], makeRepeatRegistry())
+    expect(r).toMatchObject({ kind: 'command', input: { vmOption: ['-Da=1', '-Db=2'], size: [3, 4] } })
+  })
+
+  test('a single occurrence is still an array, and other flags keep the last value', () => {
+    const r = parseCli(['vardrynn', 'repeat', '--vm-option', '-Da=1', '--name', 'a', '--name', 'b'], makeRepeatRegistry())
+    expect(r).toMatchObject({ kind: 'command', input: { vmOption: ['-Da=1'], name: 'b' } })
+  })
+
+  test('command help marks repeatable flags', () => {
+    const reg = makeRepeatRegistry()
+    expect(formatCommandHelp(reg.get('test.repeat')!)).toMatch(/--vm-option <value>.*\(repeatable\)/)
   })
 })

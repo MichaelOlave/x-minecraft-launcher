@@ -40,6 +40,7 @@ import { ServerStatusService } from '@xmcl/runtime/serverStatus'
 import { ThemeService } from '@xmcl/runtime/theme'
 import { BackupService } from '@xmcl/runtime/backup'
 import { VardrynnPackService } from '@xmcl/runtime/vardrynnPack'
+import { DevTestService } from '@xmcl/runtime/devtest'
 import { LocalSkinService, OfficialUserService, UserService, MinecraftFriendsService } from '@xmcl/runtime/user'
 import { ServerService } from './ServerService'
 
@@ -91,4 +92,5 @@ export const definedServices = [
   InstanceThemeService,
   BackupService,
   VardrynnPackService,
+  DevTestService,
 ]

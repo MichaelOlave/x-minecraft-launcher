@@ -23,7 +23,7 @@ async function countMods(instancePath: string): Promise<number> {
  * Pre-fills host-specific fields on parsed CLI input. The handler stays
  * pure; the CLI layer is the only place that touches the file system.
  */
-async function enrichInput(commandId: string, input: Record<string, unknown>): Promise<Record<string, unknown>> {
+export async function enrichInput(commandId: string, input: Record<string, unknown>): Promise<Record<string, unknown>> {
   if (commandId === 'instance.launch' && input.modCount === undefined) {
     const inst = typeof input.instance === 'string' ? input.instance : ''
     if (inst) input.modCount = await countMods(inst)

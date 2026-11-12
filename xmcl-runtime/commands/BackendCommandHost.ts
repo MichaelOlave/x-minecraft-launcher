@@ -71,6 +71,16 @@ export function createStdoutOutput(json = false): CommandOutput {
         process.stdout.write(`${cols.map((c) => String(r[c] ?? '')).join('\t')}\n`)
       }
     },
+    progress(task, progress, total, message) {
+      if (json) {
+        process.stdout.write(`${JSON.stringify({ type: 'progress', task, progress, total, message })}\n`)
+      } else {
+        process.stderr.write(`[${task}] ${progress}${total ? `/${total}` : ''}${message ? ` ${message}` : ''}\n`)
+      }
+    },
+    event(name, data) {
+      if (json) process.stdout.write(`${JSON.stringify({ type: 'event', event: name, data })}\n`)
+    },
   }
 }
 
@@ -129,7 +139,7 @@ export class BackendCommandHost {
    * Build a fresh {@link CommandContext} for a dispatch. Reusing host
    * helpers keeps every dispatch consistent.
    */
-  createContext(opts: { mode?: CommandMode; signal?: AbortSignal; out?: CommandOutput } = {}): CommandContext {
+  createContext(opts: { mode?: CommandMode; signal?: AbortSignal; out?: CommandOutput; cwd?: string } = {}): CommandContext {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const host = this
     const mode = opts.mode ?? 'cli'
@@ -140,6 +150,12 @@ export class BackendCommandHost {
       mode,
       signal,
       out,
+      cwd: opts.cwd,
+      async subscribe(key, event, listener) {
+        const service = await host.resolveService(key as ServiceKey<any>)
+        service.on(event, listener)
+        return () => { service.off(event, listener) }
+      },
       async call(key, method, ...args) {
         const service = await host.resolveService(key as ServiceKey<any>)
         const fn = (service as any)[method]
@@ -186,13 +202,17 @@ export class BackendCommandHost {
       select: (opts) => host.bridge.select(opts),
       async task<T>(name: string, run: (handle: TaskHandle) => Promise<T>): Promise<T> {
         // Lightweight in-process task — backend telemetry can be wired up later.
+        const report = (task: string, progress: number, total?: number, message?: string) => {
+          host.logger?.log(`[${task}] ${progress}${total ? `/${total}` : ''} ${message ?? ''}`)
+          out.progress?.(task, progress, total, message)
+        }
         const handle: TaskHandle = {
           update(progress, total, message) {
-            host.logger?.log(`[${name}] ${progress}${total ? `/${total}` : ''} ${message ?? ''}`)
+            report(name, progress, total, message)
           },
           child: (childName) => ({
             update(progress, total, message) {
-              host.logger?.log(`[${name}/${childName}] ${progress}${total ? `/${total}` : ''} ${message ?? ''}`)
+              report(`${name}/${childName}`, progress, total, message)
             },
             child: (n) => handle.child(n),
           }),

@@ -28,6 +28,7 @@ import { UTF8 } from '../util/encoding'
 import type { LaunchMiddleware } from './LaunchMiddleware'
 import { ensureDir } from '@xmcl/installer/utils'
 import { LaunchHistoryStore } from './LaunchHistoryStore'
+import { describeLaunchSettings, type LaunchSettingsEvidence } from './launchSettings'
 import { findOfficialLauncher, officialJavaArgs, officialLauncherCandidates, upsertOfficialProfile } from './officialLauncher'
 import { runWithInternalSpan } from '../infra/telemetry_context'
 
@@ -446,6 +447,7 @@ export class LaunchService extends AbstractService implements ILaunchService {
       }
 
       let process: ChildProcess
+      let settings: LaunchSettingsEvidence | undefined
       const context: Record<string, any> = {}
       let launchOptions: (ResolvedLaunchOptions | ServerOptions)
       if ('inheritances' in version) {
@@ -475,6 +477,22 @@ export class LaunchService extends AbstractService implements ILaunchService {
           this.log('Launching a server')
         }
 
+        settings = await describeLaunchSettings({
+          side: 'client',
+          version: version.id,
+          minecraft: version.minecraftVersion,
+          javaPath: op.javaPath,
+          minMemory: op.minMemory,
+          maxMemory: op.maxMemory,
+          vmOptions: op.extraJVMArgs,
+          mcOptions: op.extraMCArgs,
+          prependCommand: typeof op.prependCommand === 'string' ? [op.prependCommand] : op.prependCommand,
+          env: options.env,
+          resolution: op.resolution,
+          world: options.world,
+          server: options.server,
+          commandLine: await generateArguments({ ...op }).catch(() => undefined),
+        }).catch(() => undefined)
         this.log('Launching client with these option...')
         this.log(JSON.stringify(op, (k, v) => (k === 'accessToken' ? '***' : v), 2))
         try {
@@ -501,6 +519,19 @@ export class LaunchService extends AbstractService implements ILaunchService {
           }
         }
 
+        const server = launchOptions as ServerOptions
+        settings = await describeLaunchSettings({
+          side: 'server',
+          version: version.id,
+          minecraft: version.minecraftVersion,
+          javaPath: server.javaPath,
+          minMemory: server.minMemory,
+          maxMemory: server.maxMemory,
+          vmOptions: server.extraJVMArgs,
+          mcOptions: server.extraMCArgs,
+          env: options.env,
+          commandLine: (() => { try { return generateArgumentsServer({ ...server }) } catch { return undefined } })(),
+        }).catch(() => undefined)
         this.log('Launching server with these option...')
         this.log(JSON.stringify(launchOptions, (k, v) => (k === 'accessToken' ? '***' : v), 2))
         process = await this.#track(() => launchServer(launchOptions), 'spawn_process')
@@ -568,6 +599,9 @@ export class LaunchService extends AbstractService implements ILaunchService {
         minecraft: version.minecraftVersion,
         startedAt: startTime,
       }).catch(e => this.warn(e))
+      if (settings) {
+        void this.launchHistory.writeSettings(options.gameDirectory, launchId, settings).catch(e => this.warn(e))
+      }
       this.emit('minecraft-start', {
         pid: process.pid,
         launchId,

@@ -17,6 +17,7 @@ export type CommandCategory =
   | 'save'
   | 'system'
   | 'ui'
+  | 'dev'
 
 /**
  * A reference to a remote or local resource used by install commands.
@@ -90,6 +91,18 @@ export interface CommandOutput {
   json(payload: unknown): void
   /** Tabular data — pretty-printed in CLI, list-rendered in palette. */
   table(rows: ReadonlyArray<Record<string, unknown>>): void
+  /**
+   * Progress of a long operation. The terminal shows it on stderr, or as a
+   * `{"type":"progress"}` line in `--json` mode. Hosts without a progress
+   * display may leave it out.
+   */
+  progress?(task: string, progress: number, total?: number, message?: string): void
+  /**
+   * A named milestone of a long-running command, such as a launch becoming
+   * ready. Printed as a `{"type":"event"}` line in `--json` mode so scripts
+   * can follow it; handlers log their own human-readable text separately.
+   */
+  event?(name: string, data?: unknown): void
 }
 
 // Helpers to extract args and return types from a service method.
@@ -157,6 +170,19 @@ export interface CommandContext {
 
   /** Output sink. */
   readonly out: CommandOutput
+
+  /**
+   * Working directory of the terminal that issued the command, when it came
+   * from one. Services resolve relative paths in the input against it.
+   */
+  readonly cwd?: string
+
+  /**
+   * Listen to a service event for the life of a command. Returns the
+   * function that stops listening. Hosts that cannot forward service events
+   * leave it out, so handlers must check for it.
+   */
+  subscribe?<T>(key: ServiceKey<T>, event: string, listener: (payload: any) => void): Promise<() => void>
 }
 
 /**
@@ -179,6 +205,11 @@ export interface CommandCliFlag {
    * string captured from argv and returns the value passed to the schema.
    */
   parse?: (value: string) => unknown
+  /**
+   * The flag may be given more than once. Its values (after `parse`) are
+   * collected into an array in the order given.
+   */
+  multiple?: boolean
 }
 
 /**

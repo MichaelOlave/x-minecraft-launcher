@@ -197,11 +197,25 @@ export class LauncherApp extends EventEmitter {
    */
   #isBootstrapSignal = createPromiseSignal<boolean>()
   /**
+   * Resolves `true` once this process holds the single-instance lock, or
+   * `false` when it is a second instance that is about to quit.
+   */
+  #primaryInstanceSignal = createPromiseSignal<boolean>()
+  /**
    * The disposers to dispose when the app is going to quit.
    */
   #disposers: (() => (Promise<void> | void))[] = []
 
   deferredWindowOpen = false
+
+  /**
+   * Whether this process is the launcher that serves the user. Plugins that
+   * own machine-wide resources, such as the terminal command socket, wait on
+   * it so a second instance never takes them over before it quits.
+   */
+  get primaryInstance(): Promise<boolean> {
+    return this.#primaryInstanceSignal.promise
+  }
 
   protected logger: Logger = this.getLogger('App')
 
@@ -326,9 +340,11 @@ export class LauncherApp extends EventEmitter {
 
     // singleton lock
     if (!this.host.requestSingleInstanceLock()) {
+      this.#primaryInstanceSignal.resolve(false)
       this.host.quit()
       return
     }
+    this.#primaryInstanceSignal.resolve(true)
 
     this.logger.log(`Boot from ${this.appDataPath}`)
 

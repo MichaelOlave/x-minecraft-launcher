@@ -87,14 +87,26 @@ export function parseCli(argv: ReadonlyArray<string>, registry: CommandRegistry)
 
   // First pass: locate the command and harvest globals that appear before/after it.
   // We do not parse command-specific flags here.
+  const maxNameWords = Math.max(1, ...[...commandIndex.keys()].map((name) => name.split(' ').length))
+
   for (let i = 0; i < argv.length; i++) {
     const tok = argv[i]
     if (!cmd) {
-      if (commandIndex.has(tok)) {
-        cmd = commandIndex.get(tok)!
-        cmdNameTokenIndex = i
-        continue
+      // Multi-word names (`instance list`) may arrive as separate arguments
+      // or quoted as one. Prefer the longest name that matches here.
+      let matched = false
+      for (let words = Math.min(maxNameWords, argv.length - i); words >= 1; words--) {
+        const name = argv.slice(i, i + words).join(' ')
+        const found = commandIndex.get(name)
+        if (found) {
+          cmd = found
+          cmdNameTokenIndex = i + words - 1
+          i += words - 1
+          matched = true
+          break
+        }
       }
+      if (matched) continue
     }
     // Global flags handling — recognise on either side of the command.
     if (tok === '--help' || tok === '-h') {
@@ -152,9 +164,14 @@ export function parseCli(argv: ReadonlyArray<string>, registry: CommandRegistry)
   let positionalIdx = 0
 
   const setFlagValue = (name: string, raw: string, decl: CommandCliFlag | undefined) => {
-    if (decl?.parse) input[name] = decl.parse(raw)
-    else if (decl?.type === 'number') input[name] = Number(raw)
-    else input[name] = raw
+    const value = decl?.parse ? decl.parse(raw) : decl?.type === 'number' ? Number(raw) : raw
+    if (decl?.multiple) {
+      const list = Array.isArray(input[name]) ? input[name] as unknown[] : []
+      list.push(value)
+      input[name] = list
+    } else {
+      input[name] = value
+    }
   }
 
   for (let i = 0; i < tail.length; i++) {
@@ -294,7 +311,8 @@ export function formatCommandHelp(cmd: AnyCommand, opts: { programName?: string 
       if (!decl) continue
       const aliasPart = decl.alias ? `-${decl.alias}, ` : '    '
       const valuePart = decl.type === 'boolean' ? '' : ' <value>'
-      lines.push(`  ${aliasPart}--${camelToKebab(field)}${valuePart}`.padEnd(34) + (decl.description ?? ''))
+      const repeat = decl.multiple ? ' (repeatable)' : ''
+      lines.push(`  ${aliasPart}--${camelToKebab(field)}${valuePart}`.padEnd(34) + (decl.description ?? '') + repeat)
     }
   }
   return lines.join('\n')
