@@ -47,6 +47,11 @@ export class LaunchHistoryStore {
     return join(this.launchRoot(instancePath, launchId), 'launch.json')
   }
 
+  /** Where the record of a launch is kept, for tools that follow it while the game runs. */
+  getRecordPath(instancePath: string, launchId: string) {
+    return this.manifestPath(instancePath, launchId)
+  }
+
   private liveGameLogPath(instancePath: string, record: LaunchHistoryRecord) {
     return record.side === 'server'
       ? join(instancePath, 'server', 'logs', 'latest.log')

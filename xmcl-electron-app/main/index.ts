@@ -7,6 +7,8 @@ import { app } from 'electron'
 import ElectronLauncherApp from './ElectronLauncherApp'
 // eslint-disable-next-line import/first
 import { detectCliInvocation, runCliEntry } from './cliEntry'
+// eslint-disable-next-line import/first
+import { runTestScenario } from '@xmcl/runtime/devtest/testRunner'
 
 // Disable sandbox for AppImage to avoid chrome-sandbox permission issues
 // AppImage mounts to /tmp which cannot have proper setuid permissions
@@ -40,7 +42,7 @@ const cliInvocation = process.env.ELECTRON_RUN_AS_NODE ? undefined : detectCliIn
 /** True when this process only relays a terminal command; development hooks must stay quiet. */
 export const isCliProcess = !!cliInvocation
 if (cliInvocation) {
-  void runCliEntry(cliInvocation)
+  void runCliEntry(cliInvocation, { 'test.run': runTestScenario })
 } else {
   new ElectronLauncherApp().start()
 }

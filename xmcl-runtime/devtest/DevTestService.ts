@@ -2,9 +2,11 @@ import type { Instance } from '@xmcl/instance'
 import {
   DevTestServiceKey,
   InstanceNotFoundError,
+  type BeginTestRunOptions,
   type DevTestService as IDevTestService,
   type StageDevInstanceOptions,
   type StageDevInstanceResult,
+  type TestRunRecord,
 } from '@xmcl/runtime-api'
 import { readdir } from 'fs/promises'
 import { basename, join, resolve } from 'path'
@@ -12,11 +14,15 @@ import { Inject, LauncherAppKey, kGameDataPath, type PathResolver } from '~/app'
 import { LauncherApp } from '~/app/LauncherApp'
 import { InstanceService } from '~/instance'
 import { LaunchService } from '~/launch'
+import { LaunchHistoryStore } from '~/launch/LaunchHistoryStore'
 import { AbstractService, ExposeServiceKey } from '~/service'
 import { HashCache } from './fileHash'
 import { applyLocalMods, describePlan, readInstanceIdentities, readLocalMods } from './localMods'
 import { LocalModPlan, ModIdentity, ModIdentityCache, planLocalMods } from './modIds'
 import { DEFAULT_COPY_ONCE, DevMarker, readMarker, stageError, stageFiles, verifySource, writeMarker } from './stage'
+import { TestRunStore } from './testRuns'
+
+type RunUpdate = Partial<Omit<TestRunRecord, 'runId' | 'runDir' | 'createdAt'>>
 
 /** Instance settings a disposable copy inherits so it launches like the working instance. */
 const INHERITED_SETTINGS = ['version', 'java', 'assignMemory', 'minMemory', 'maxMemory', 'vmOptions', 'mcOptions', 'env', 'resolution', 'prependCommand', 'preExecuteCommand'] as const
@@ -25,6 +31,8 @@ const INHERITED_SETTINGS = ['version', 'java', 'assignMemory', 'minMemory', 'max
 export class DevTestService extends AbstractService implements IDevTestService {
   readonly #hashes = new HashCache()
   readonly #identities: ModIdentityCache
+  readonly #runs: TestRunStore
+  readonly #launchHistory: LaunchHistoryStore
 
   constructor(
     @Inject(LauncherAppKey) app: LauncherApp,
@@ -34,6 +42,34 @@ export class DevTestService extends AbstractService implements IDevTestService {
   ) {
     super(app)
     this.#identities = new ModIdentityCache(this.getAppDataPath('dev-cache', 'mod-ids.json'))
+    this.#runs = new TestRunStore(this.getAppDataPath('test-runs'))
+    this.#launchHistory = new LaunchHistoryStore(this.getAppDataPath('launch-history'))
+  }
+
+  beginTestRun(options: BeginTestRunOptions): Promise<TestRunRecord> {
+    return this.#runs.begin({ ...options, launcherVersion: this.app.version })
+  }
+
+  recordTestRun(runId: string, update: RunUpdate): Promise<TestRunRecord> {
+    return this.#runs.update(runId, update)
+  }
+
+  async finishTestRun(runId: string, update: RunUpdate): Promise<TestRunRecord> {
+    const record = await this.#runs.update(runId, { ...update, endedAt: update.endedAt ?? Date.now() })
+    this.log(`Test run ${runId} finished: ${record.outcome}`)
+    return record
+  }
+
+  getTestRun(runId: string) {
+    return this.#runs.get(runId)
+  }
+
+  listTestRuns(limit?: number) {
+    return this.#runs.list(limit)
+  }
+
+  async getLaunchRecordPath(instancePath: string, launchId: string) {
+    return this.#launchHistory.getRecordPath(instancePath, launchId)
   }
 
   /** Find an instance by path (absolute or relative to `cwd`) or by name. */

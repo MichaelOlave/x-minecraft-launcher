@@ -138,6 +138,84 @@ export interface StageDevInstanceResult {
   durationMs: number
 }
 
+/** How a test run ended. Each maps to a `CliExitCode`. */
+export type TestRunOutcome =
+  | 'running'
+  | 'passed'
+  | 'setup-failed'
+  | 'start-failed'
+  | 'not-ready'
+  | 'test-failed'
+  | 'unclean-exit'
+  | 'cancelled'
+
+export type TestRunPhaseName = 'setup' | 'start' | 'ready' | 'test' | 'exit'
+
+export interface TestRunPhase {
+  name: TestRunPhaseName
+  status: 'running' | 'passed' | 'failed' | 'skipped'
+  startedAt?: number
+  endedAt?: number
+  detail?: string
+}
+
+/** What the pack's harness reported. */
+export interface TestHarnessResult {
+  result: 'PASS' | 'FAIL'
+  /** Individual checks, if the harness wrote them. */
+  checks: Array<{ name: string; result: 'PASS' | 'FAIL' | 'SKIP'; detail?: string }>
+  summary?: string
+  /** The harness process's exit status; `null` if it was killed. */
+  exitCode: number | null
+  /** Whether the result came from the harness's result file or only its exit status. */
+  source: 'result-file' | 'exit-code' | 'timeout' | 'not-run'
+  durationMs?: number
+}
+
+export interface TestRunLaunch {
+  launchId: string
+  pid: number
+  startedAt: number
+  readyAt?: number
+  /** Milliseconds from process start to the game window. */
+  startupMs?: number
+  endedAt?: number
+  exitCode?: number
+  signal?: string
+  crashed?: boolean
+  crashReportLocation?: string
+  /** Vardrynn stopped the game, after a timeout or cancellation. */
+  stopped?: boolean
+}
+
+/** A named test run and its evidence, kept under the launcher's `test-runs` folder. */
+export interface TestRunRecord {
+  runId: string
+  scenario: string
+  /** The pack repository folder holding the scenario file. */
+  pack: string
+  scenarioFile: string
+  launcherVersion: string
+  createdAt: number
+  endedAt?: number
+  outcome: TestRunOutcome
+  exitCode?: number
+  error?: { code: string; message: string }
+  phases: TestRunPhase[]
+  instance?: { name: string; path: string }
+  stage?: StageDevInstanceResult
+  launch?: TestRunLaunch
+  harness?: TestHarnessResult
+  /** Folder with run.json, logs and other evidence. */
+  runDir: string
+}
+
+export interface BeginTestRunOptions {
+  scenario: string
+  pack: string
+  scenarioFile: string
+}
+
 export interface DevTestServiceEventMap {
   /** Progress of a long step, keyed by the disposable instance's name. */
   'dev-progress': { name: string; task: string; progress: number; total?: number; message?: string }
@@ -154,6 +232,17 @@ export interface DevTestService {
    * share disk space with the working instance but never its writes.
    */
   stageDevInstance(options: StageDevInstanceOptions): Promise<StageDevInstanceResult>
+  /** Allocate a run ID and its evidence folder. */
+  beginTestRun(options: BeginTestRunOptions): Promise<TestRunRecord>
+  /** Save progress of a run, so an interrupted run still leaves a record. */
+  recordTestRun(runId: string, update: Partial<Omit<TestRunRecord, 'runId' | 'runDir' | 'createdAt'>>): Promise<TestRunRecord>
+  /** Save the final record. */
+  finishTestRun(runId: string, update: Partial<Omit<TestRunRecord, 'runId' | 'runDir' | 'createdAt'>>): Promise<TestRunRecord>
+  getTestRun(runId: string): Promise<TestRunRecord | undefined>
+  /** Most recent first. */
+  listTestRuns(limit?: number): Promise<TestRunRecord[]>
+  /** Path of the launcher's own record (`launch.json`) of a launch, for harnesses that follow it. */
+  getLaunchRecordPath(instancePath: string, launchId: string): Promise<string>
 }
 
 export const DevTestServiceKey: ServiceKey<DevTestService> = 'DevTestService'
