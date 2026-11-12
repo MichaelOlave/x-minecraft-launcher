@@ -44,7 +44,8 @@ export function describeTestRun(record: TestRunRecord): string[] {
     lines.push(`  ${check.result.padEnd(4)} ${check.name}${check.detail ? ` — ${check.detail}` : ''}`)
   }
   if (record.launch) lines.push(`  Launch ${record.launch.launchId} (pid ${record.launch.pid})`)
-  lines.push(`  Evidence: ${record.runDir}`)
+  lines.push(`  Evidence: ${record.runDir}${record.evidence ? ` (${record.evidence.length} files)` : ''}`)
+  if (record.outcome !== 'running') lines.push(`  Share it: vardrynn test export ${record.runId}`)
   return lines
 }
 
@@ -153,6 +154,30 @@ export const showTestRunCommand = defineCommand({
     for (const line of describeTestRun(record)) ctx.out.log(line)
     ctx.out.json({ ok: true, command: 'test.show', data: record })
     return record
+  },
+})
+
+export const exportTestRunCommand = defineCommand({
+  id: 'test.export',
+  title: 'Export Test Run',
+  description: 'Zip a test run\'s evidence for sharing. Credentials are redacted from every text file and the home folder is shown as ~.',
+  category: 'dev',
+  input: z.object({ runId: z.string().min(1), out: z.string().min(1).optional() }),
+  cli: {
+    name: 'test export',
+    positionals: ['runId'],
+    flags: { out: { alias: 'o', description: 'Zip file to write (default: <run>.zip here)' } },
+  },
+  async handler(input, ctx) {
+    let result
+    try {
+      result = await ctx.call(DevTestServiceKey, 'exportTestRun', input.runId, { out: input.out, cwd: ctx.cwd })
+    } catch (e) {
+      throw new CommandExitError(CliExitCode.Failure, (e as Error).name || 'ExportFailed', (e as Error).message)
+    }
+    ctx.out.log(`Wrote ${result.file} (${result.entries} files, ${result.redactions} credential value(s) redacted)`)
+    ctx.out.json({ ok: true, command: 'test.export', data: result })
+    return result
   },
 })
 

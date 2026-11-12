@@ -2,6 +2,7 @@ import { commands } from '../registry'
 import { stageDevInstanceCommand } from './stage'
 import {
   beginTestRunCommand,
+  exportTestRunCommand,
   finishTestRunCommand,
   launchRecordPathCommand,
   listTestRunsCommand,
@@ -23,6 +24,7 @@ export function registerDevCommands() {
     runTestScenarioCommand,
     listTestRunsCommand,
     showTestRunCommand,
+    exportTestRunCommand,
     beginTestRunCommand,
     recordTestRunCommand,
     finishTestRunCommand,

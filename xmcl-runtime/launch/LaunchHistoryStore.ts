@@ -47,6 +47,28 @@ export class LaunchHistoryStore {
     return join(this.launchRoot(instancePath, launchId), 'launch.json')
   }
 
+  /** Record the settings a launch started with. Written after `begin`, so pruning cannot race it. */
+  writeSettings(instancePath: string, launchId: string, settings: unknown) {
+    return this.update(launchId, async () => {
+      if (!await this.get(instancePath, launchId)) return
+      await writeAtomically(join(this.launchRoot(instancePath, launchId), 'launch-settings.json'), JSON.stringify(settings, undefined, 2))
+    })
+  }
+
+  async readSettings(instancePath: string, launchId: string): Promise<unknown> {
+    const raw = await readFile(join(this.launchRoot(instancePath, launchId), 'launch-settings.json'), 'utf8').catch(() => '')
+    try {
+      return raw ? JSON.parse(raw) : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** The folder holding a launch's record and evidence files. */
+  getLaunchFolder(instancePath: string, launchId: string) {
+    return this.launchRoot(instancePath, launchId)
+  }
+
   /** Where the record of a launch is kept, for tools that follow it while the game runs. */
   getRecordPath(instancePath: string, launchId: string) {
     return this.manifestPath(instancePath, launchId)

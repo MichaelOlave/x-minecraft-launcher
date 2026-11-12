@@ -6,9 +6,10 @@ import {
   type DevTestService as IDevTestService,
   type StageDevInstanceOptions,
   type StageDevInstanceResult,
+  type TestRunExport,
   type TestRunRecord,
 } from '@xmcl/runtime-api'
-import { readdir } from 'fs/promises'
+import { mkdir, readdir } from 'fs/promises'
 import { basename, join, resolve } from 'path'
 import { Inject, LauncherAppKey, kGameDataPath, type PathResolver } from '~/app'
 import { LauncherApp } from '~/app/LauncherApp'
@@ -21,6 +22,7 @@ import { applyLocalMods, describePlan, readInstanceIdentities, readLocalMods } f
 import { LocalModPlan, ModIdentity, ModIdentityCache, planLocalMods } from './modIds'
 import { DEFAULT_COPY_ONCE, DevMarker, readMarker, stageError, stageFiles, verifySource, writeMarker } from './stage'
 import { TestRunStore } from './testRuns'
+import { LauncherLogCapture, collectRunEvidence, exportRunArchive } from './evidence'
 
 type RunUpdate = Partial<Omit<TestRunRecord, 'runId' | 'runDir' | 'createdAt'>>
 
@@ -33,6 +35,7 @@ export class DevTestService extends AbstractService implements IDevTestService {
   readonly #identities: ModIdentityCache
   readonly #runs: TestRunStore
   readonly #launchHistory: LaunchHistoryStore
+  readonly #logCapture: LauncherLogCapture
 
   constructor(
     @Inject(LauncherAppKey) app: LauncherApp,
@@ -44,10 +47,15 @@ export class DevTestService extends AbstractService implements IDevTestService {
     this.#identities = new ModIdentityCache(this.getAppDataPath('dev-cache', 'mod-ids.json'))
     this.#runs = new TestRunStore(this.getAppDataPath('test-runs'))
     this.#launchHistory = new LaunchHistoryStore(this.getAppDataPath('launch-history'))
+    this.#logCapture = new LauncherLogCapture(app.logEmitter)
   }
 
-  beginTestRun(options: BeginTestRunOptions): Promise<TestRunRecord> {
-    return this.#runs.begin({ ...options, launcherVersion: this.app.version })
+  async beginTestRun(options: BeginTestRunOptions): Promise<TestRunRecord> {
+    const record = await this.#runs.begin({ ...options, launcherVersion: this.app.version })
+    await mkdir(join(record.runDir, 'logs'), { recursive: true })
+    this.#logCapture.start(record.runId, join(record.runDir, 'logs', 'launcher.log'))
+    this.log(`Test run ${record.runId} started for ${options.scenario}`)
+    return record
   }
 
   recordTestRun(runId: string, update: RunUpdate): Promise<TestRunRecord> {
@@ -55,9 +63,24 @@ export class DevTestService extends AbstractService implements IDevTestService {
   }
 
   async finishTestRun(runId: string, update: RunUpdate): Promise<TestRunRecord> {
-    const record = await this.#runs.update(runId, { ...update, endedAt: update.endedAt ?? Date.now() })
+    let record = await this.#runs.update(runId, { ...update, endedAt: update.endedAt ?? Date.now() })
     this.log(`Test run ${runId} finished: ${record.outcome}`)
+    await this.#logCapture.stop(runId)
+    try {
+      const evidence = await collectRunEvidence(record, this.#launchHistory)
+      record = await this.#runs.update(runId, { evidence })
+    } catch (e) {
+      this.warn(`Could not collect all evidence for ${runId}`)
+      this.error(e as Error)
+    }
     return record
+  }
+
+  async exportTestRun(runId: string, options: { out?: string; cwd?: string } = {}): Promise<TestRunExport> {
+    const record = await this.#runs.get(runId)
+    if (!record) throw Object.assign(new Error(`No test run ${runId}`), { name: 'TestRunNotFound' })
+    const out = resolve(options.cwd ?? process.cwd(), options.out ?? `${runId}.zip`)
+    return exportRunArchive(record.runDir, runId, out)
   }
 
   getTestRun(runId: string) {

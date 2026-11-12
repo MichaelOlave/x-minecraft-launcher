@@ -208,6 +208,16 @@ export interface TestRunRecord {
   harness?: TestHarnessResult
   /** Folder with run.json, logs and other evidence. */
   runDir: string
+  /** Evidence files in `runDir`, collected when the run finished. */
+  evidence?: string[]
+}
+
+export interface TestRunExport {
+  /** The zip file written. */
+  file: string
+  entries: number
+  /** How many credential values were redacted. */
+  redactions: number
 }
 
 export interface BeginTestRunOptions {
@@ -241,6 +251,11 @@ export interface DevTestService {
   getTestRun(runId: string): Promise<TestRunRecord | undefined>
   /** Most recent first. */
   listTestRuns(limit?: number): Promise<TestRunRecord[]>
+  /**
+   * Zip a run's evidence for sharing, with credentials redacted from every
+   * text file. `out` defaults to `<runId>.zip` in `cwd`.
+   */
+  exportTestRun(runId: string, options?: { out?: string; cwd?: string }): Promise<TestRunExport>
   /** Path of the launcher's own record (`launch.json`) of a launch, for harnesses that follow it. */
   getLaunchRecordPath(instancePath: string, launchId: string): Promise<string>
 }
